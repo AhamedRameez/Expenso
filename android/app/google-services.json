@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "789081695498",
+    "project_id": "expenso-01",
+    "storage_bucket": "expenso-01.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:789081695498:android:a4729f80c40bbfbe1dc6f3",
+        "android_client_info": {
+          "package_name": "com.example.expenso"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCdStzz9_V9lNPHKgBun5sFMXRojJfSnrE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
