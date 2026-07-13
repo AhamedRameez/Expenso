@@ -433,20 +433,20 @@ class _ExpenseReportScreenState extends State<ExpenseReportScreen> {
             pw.SizedBox(height: 20),
 
             // ===== CATEGORY BREAKDOWN =====
-            pw.Text(
-              'Category-wise Breakdown',
-              style: pw.TextStyle(
-                fontSize: 16,
-                fontWeight: pw.FontWeight.bold,
-                color: darkColor,
-              ),
-            ),
-            pw.SizedBox(height: 12),
+            // pw.Text(
+            //   'Category-wise Breakdown',
+            //   style: pw.TextStyle(
+            //     fontSize: 16,
+            //     fontWeight: pw.FontWeight.bold,
+            //     color: darkColor,
+            //   ),
+            // ),
+            // pw.SizedBox(height: 12),
 
             // Add all category widgets
-            ...categoryWidgets,
+            // ...categoryWidgets,
 
-            pw.SizedBox(height: 20),
+            // pw.SizedBox(height: 20),
 
             // ===== TRANSACTION TABLE =====
             pw.Text(

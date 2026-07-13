@@ -6,6 +6,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'calculator_screen.dart';
+import 'expense_calculation_screen.dart';
 import 'expense_report_screen.dart';
 import 'expense_screen.dart';
 import 'income_report_screen.dart';
@@ -421,6 +422,14 @@ class _UserDashboardState extends State<UserDashboard> {
                                     const ReportsScreen(), // 🆕 Use combined screen
                               ),
                             );
+                          }),
+                           _card(context, 'Expense Calculator', Icons.bar_chart, () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const ExpenseCalculationScreen(),
+                              ),
+                            ).then((_) => _loadFinancialSummary());
                           }),
                           _card(context, 'Calculator', Icons.bar_chart, () {
                             Navigator.push(
