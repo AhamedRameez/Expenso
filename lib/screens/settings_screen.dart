@@ -2,6 +2,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:intl/intl.dart';
 import 'login_screen.dart';
 import 'profile_screen.dart';
 import 'password_change_screen.dart';
@@ -20,8 +21,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   // Settings values
   String _selectedCurrency = 'INR';
-  bool _notificationsEnabled = true;
-  bool _biometricEnabled = false;
 
   @override
   void initState() {
@@ -80,89 +79,477 @@ class _SettingsScreenState extends State<SettingsScreen> {
     }
   }
 
-  // ==================== CHANGE CURRENCY ====================
-  void _showCurrencyPicker() {
-    final currencies = [
-      {'code': 'INR', 'symbol': '₹', 'name': 'Indian Rupee'},
-      {'code': 'USD', 'symbol': '\$', 'name': 'US Dollar'},
-      {'code': 'EUR', 'symbol': '€', 'name': 'Euro'},
-      {'code': 'GBP', 'symbol': '£', 'name': 'British Pound'},
-      {'code': 'AUD', 'symbol': 'A\$', 'name': 'Australian Dollar'},
-      {'code': 'CAD', 'symbol': 'C\$', 'name': 'Canadian Dollar'},
-      {'code': 'AED', 'symbol': 'د.إ', 'name': 'UAE Dirham'},
-      {'code': 'SGD', 'symbol': 'S\$', 'name': 'Singapore Dollar'},
-    ];
+  // ==================== BACKUP DATA ====================
+  Future<void> _backupData() async {
+    if (_currentUserId == null) return;
 
-    showModalBottomSheet(
+    final confirm = await showDialog<bool>(
       context: context,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
-      builder: (context) => Container(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
           children: [
-            const Text(
-              'Select Currency',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.w700,
-                color: Color(0xFF1E293B),
-              ),
+            Icon(Icons.backup_outlined, color: Color(0xFF3498DB)),
+            SizedBox(width: 8),
+            Text('Backup Data'),
+          ],
+        ),
+        content: const Text(
+          'This will create a backup of all your transactions and settings. Continue?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF3498DB),
             ),
-            const SizedBox(height: 16),
-            ...currencies.map((currency) {
-              final isSelected = _selectedCurrency == currency['code'];
-              return ListTile(
-                onTap: () {
-                  setState(() => _selectedCurrency = currency['code']!);
-                  _saveSetting('defaultCurrency', currency['code']);
-                  Navigator.pop(context);
-                },
-                leading: Container(
-                  width: 40,
-                  height: 40,
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? const Color(0xFF3498DB).withOpacity(0.1)
-                        : Colors.grey.shade100,
-                    borderRadius: BorderRadius.circular(10),
+            child: const Text('Backup Now'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    try {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          padding: const EdgeInsets.all(24),
+          child: const Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(color: Color(0xFF3498DB)),
+              SizedBox(height: 16),
+              Text(
+                'Creating backup...',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+              ),
+            ],
+          ),
+        ),
+      );
+
+      final firestore = FirebaseFirestore.instance;
+      final backupId = DateFormat('yyyyMMdd_HHmmss').format(DateTime.now());
+
+      // 1. Backup user data
+      final userDoc = await firestore
+          .collection('ExpensoUsers')
+          .doc(_currentUserId)
+          .get();
+      if (userDoc.exists) {
+        await firestore
+            .collection('ExpensoUsers')
+            .doc(_currentUserId)
+            .collection('backups')
+            .doc(backupId)
+            .collection('data')
+            .doc('profile')
+            .set(userDoc.data()!);
+      }
+
+      // 2. Backup transactions
+      final transactions = await firestore
+          .collection('ExpensoUsers')
+          .doc(_currentUserId)
+          .collection('transactions')
+          .get();
+
+      int transactionCount = 0;
+      for (var doc in transactions.docs) {
+        await firestore
+            .collection('ExpensoUsers')
+            .doc(_currentUserId)
+            .collection('backups')
+            .doc(backupId)
+            .collection('data')
+            .doc('transactions')
+            .collection('items')
+            .doc(doc.id)
+            .set(doc.data()!);
+        transactionCount++;
+      }
+
+      // 3. Backup settings
+      final settingsDoc = await firestore
+          .collection('ExpensoUsers')
+          .doc(_currentUserId)
+          .collection('settings')
+          .doc('quickCategories')
+          .get();
+
+      if (settingsDoc.exists) {
+        await firestore
+            .collection('ExpensoUsers')
+            .doc(_currentUserId)
+            .collection('backups')
+            .doc(backupId)
+            .collection('data')
+            .doc('settings')
+            .set(settingsDoc.data()!);
+      }
+
+      // 4. Save backup metadata
+      await firestore
+          .collection('ExpensoUsers')
+          .doc(_currentUserId)
+          .collection('backups')
+          .doc(backupId)
+          .set({
+            'backupId': backupId,
+            'createdAt': FieldValue.serverTimestamp(),
+            'transactionCount': transactionCount,
+            'totalExpense': _getTotalFromTransactions(transactions),
+          });
+
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle, color: Colors.white, size: 18),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Backup complete! $transactionCount transactions saved.',
+                    style: const TextStyle(fontSize: 12),
                   ),
-                  child: Center(
-                    child: Text(
-                      currency['symbol']!,
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: isSelected
-                            ? const Color(0xFF3498DB)
-                            : Colors.grey.shade700,
-                      ),
-                    ),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 3),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            margin: const EdgeInsets.all(16),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Backup failed: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  // ==================== RESTORE DATA ====================
+  Future<void> _restoreData() async {
+    if (_currentUserId == null) return;
+
+    try {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          padding: const EdgeInsets.all(24),
+          child: const Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(color: Color(0xFFE67E22)),
+              SizedBox(height: 16),
+              Text(
+                'Loading backups...',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+              ),
+            ],
+          ),
+        ),
+      );
+
+      final firestore = FirebaseFirestore.instance;
+      final backupsSnapshot = await firestore
+          .collection('ExpensoUsers')
+          .doc(_currentUserId)
+          .collection('backups')
+          .orderBy('createdAt', descending: true)
+          .get();
+
+      if (mounted) Navigator.pop(context);
+
+      if (backupsSnapshot.docs.isEmpty) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('No backups found! Create a backup first.'),
+              backgroundColor: Colors.orange,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
+        return;
+      }
+
+      if (mounted) {
+        _showRestoreDialog(backupsSnapshot.docs);
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
+  }
+
+  // ==================== SHOW RESTORE DIALOG ====================
+  void _showRestoreDialog(List<QueryDocumentSnapshot> backups) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.restore_outlined, color: Color(0xFFE67E22)),
+            SizedBox(width: 8),
+            Text('Select Backup'),
+          ],
+        ),
+        content: SizedBox(
+          width: double.maxFinite,
+          child: ListView.builder(
+            shrinkWrap: true,
+            itemCount: backups.length,
+            itemBuilder: (context, index) {
+              final backup = backups[index];
+              final data = backup.data() as Map<String, dynamic>;
+              final createdAt = data['createdAt'] as Timestamp?;
+              final dateStr = createdAt != null
+                  ? DateFormat(
+                      'dd MMM yyyy, hh:mm a',
+                    ).format(createdAt.toDate())
+                  : 'Unknown date';
+              final count = data['transactionCount'] ?? 0;
+              final total = data['totalExpense'] ?? 0.0;
+
+              return ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFE67E22).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.cloud_download,
+                    color: Color(0xFFE67E22),
+                    size: 20,
                   ),
                 ),
                 title: Text(
-                  '${currency['name']} (${currency['code']})',
-                  style: TextStyle(
-                    fontWeight: isSelected
-                        ? FontWeight.w600
-                        : FontWeight.normal,
+                  dateStr,
+                  style: const TextStyle(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
-                trailing: isSelected
-                    ? const Icon(Icons.check_circle, color: Color(0xFF3498DB))
-                    : null,
+                subtitle: Text(
+                  '$count transactions • ₹${NumberFormat('#,###').format(total)}',
+                  style: const TextStyle(fontSize: 11),
+                ),
+                onTap: () {
+                  Navigator.pop(context);
+                  _performRestore(backup.id);
+                },
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(10),
                 ),
               );
-            }),
-          ],
+            },
+          ),
         ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+        ],
       ),
     );
+  }
+
+  // ==================== PERFORM RESTORE ====================
+  Future<void> _performRestore(String backupId) async {
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Row(
+          children: [
+            Icon(Icons.warning_amber_rounded, color: Colors.orange),
+            SizedBox(width: 8),
+            Text('Confirm Restore'),
+          ],
+        ),
+        content: const Text(
+          'This will replace all current transactions with the backup data. Continue?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFE67E22),
+            ),
+            child: const Text('Restore'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirm != true) return;
+
+    try {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(16),
+          ),
+          padding: const EdgeInsets.all(24),
+          child: const Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(color: Color(0xFFE67E22)),
+              SizedBox(height: 16),
+              Text(
+                'Restoring data...',
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+              ),
+            ],
+          ),
+        ),
+      );
+
+      final firestore = FirebaseFirestore.instance;
+
+      // 1. Delete current transactions
+      final currentTransactions = await firestore
+          .collection('ExpensoUsers')
+          .doc(_currentUserId)
+          .collection('transactions')
+          .get();
+
+      for (var doc in currentTransactions.docs) {
+        await doc.reference.delete();
+      }
+
+      // 2. Restore transactions from backup
+      final backupTransactions = await firestore
+          .collection('ExpensoUsers')
+          .doc(_currentUserId)
+          .collection('backups')
+          .doc(backupId)
+          .collection('data')
+          .doc('transactions')
+          .collection('items')
+          .get();
+
+      int restoredCount = 0;
+      for (var doc in backupTransactions.docs) {
+        await firestore
+            .collection('ExpensoUsers')
+            .doc(_currentUserId)
+            .collection('transactions')
+            .doc(doc.id)
+            .set(doc.data()!);
+        restoredCount++;
+      }
+
+      // 3. Restore settings
+      final backupSettings = await firestore
+          .collection('ExpensoUsers')
+          .doc(_currentUserId)
+          .collection('backups')
+          .doc(backupId)
+          .collection('data')
+          .doc('settings')
+          .get();
+
+      if (backupSettings.exists) {
+        await firestore
+            .collection('ExpensoUsers')
+            .doc(_currentUserId)
+            .collection('settings')
+            .doc('quickCategories')
+            .set(backupSettings.data()!);
+      }
+
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.check_circle, color: Colors.white, size: 18),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Restore complete! $restoredCount transactions restored.',
+                    style: const TextStyle(fontSize: 12),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.green,
+            behavior: SnackBarBehavior.floating,
+            duration: const Duration(seconds: 3),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            margin: const EdgeInsets.all(16),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        Navigator.pop(context);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Restore failed: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  // Helper: Get total from transactions
+  double _getTotalFromTransactions(QuerySnapshot transactions) {
+    double total = 0;
+    for (var doc in transactions.docs) {
+      final data = doc.data() as Map<String, dynamic>;
+      total += (data['amount'] as num?)?.toDouble() ?? 0;
+    }
+    return total;
   }
 
   // ==================== LOGOUT ====================
@@ -247,18 +634,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     child: Column(
                       children: [
                         _buildSettingTile(
-                          icon: Icons.person_outline,
+                          icon: Icons.person_outlined,
                           iconColor: const Color(0xFF3498DB),
                           title: 'Edit Profile',
                           subtitle: 'Name, phone, business details',
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const ProfileScreen(),
-                              ),
-                            );
-                          },
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const ProfileScreen(),
+                            ),
+                          ),
                         ),
                         const Divider(height: 1, indent: 56),
                         _buildSettingTile(
@@ -266,91 +651,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           iconColor: const Color(0xFFE74C3C),
                           title: 'Change Password',
                           subtitle: 'Update your account password',
-                          onTap: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => const PasswordChangeScreen(),
-                              ),
-                            );
-                          },
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  const SizedBox(height: 20),
-
-                  // Preferences Section
-                  _buildSectionTitle('Preferences'),
-                  const SizedBox(height: 8),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.grey.withOpacity(0.05),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      children: [
-                        _buildSettingTile(
-                          icon: Icons.currency_exchange,
-                          iconColor: const Color(0xFF27AE60),
-                          title: 'Default Currency',
-                          subtitle: _getCurrencyName(_selectedCurrency),
-                          trailing: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 10,
-                              vertical: 4,
+                          onTap: () => Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) => const PasswordChangeScreen(),
                             ),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF27AE60).withOpacity(0.1),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              _selectedCurrency,
-                              style: const TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.w600,
-                                color: Color(0xFF27AE60),
-                              ),
-                            ),
-                          ),
-                          onTap: _showCurrencyPicker,
-                        ),
-                        const Divider(height: 1, indent: 56),
-                        _buildSettingTile(
-                          icon: Icons.notifications_outlined,
-                          iconColor: const Color(0xFFF39C12),
-                          title: 'Notifications',
-                          subtitle: 'Bill reminders and alerts',
-                          trailing: Switch(
-                            value: _notificationsEnabled,
-                            onChanged: (value) {
-                              setState(() => _notificationsEnabled = value);
-                              _saveSetting('notificationsEnabled', value);
-                            },
-                            activeColor: const Color(0xFF3498DB),
-                          ),
-                        ),
-                        const Divider(height: 1, indent: 56),
-                        _buildSettingTile(
-                          icon: Icons.fingerprint,
-                          iconColor: const Color(0xFF9B59B6),
-                          title: 'Biometric Lock',
-                          subtitle: 'Secure app with fingerprint',
-                          trailing: Switch(
-                            value: _biometricEnabled,
-                            onChanged: (value) {
-                              setState(() => _biometricEnabled = value);
-                              _saveSetting('biometricEnabled', value);
-                            },
-                            activeColor: const Color(0xFF3498DB),
                           ),
                         ),
                       ],
@@ -380,30 +685,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           icon: Icons.backup_outlined,
                           iconColor: const Color(0xFF3498DB),
                           title: 'Backup Data',
-                          subtitle: 'Save your data to cloud',
-                          onTap: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Backup feature coming soon!'),
-                                backgroundColor: Colors.blue,
-                              ),
-                            );
-                          },
+                          subtitle: 'Save all transactions to cloud',
+                          onTap: _backupData,
                         ),
                         const Divider(height: 1, indent: 56),
                         _buildSettingTile(
                           icon: Icons.restore_outlined,
                           iconColor: const Color(0xFFE67E22),
                           title: 'Restore Data',
-                          subtitle: 'Restore from backup',
-                          onTap: () {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Restore feature coming soon!'),
-                                backgroundColor: Colors.blue,
-                              ),
-                            );
-                          },
+                          subtitle: 'Restore from previous backup',
+                          onTap: _restoreData,
                         ),
                         const Divider(height: 1, indent: 56),
                         _buildSettingTile(
@@ -412,9 +703,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           title: 'Clear All Data',
                           subtitle: 'Delete all transactions',
                           titleColor: Colors.red,
-                          onTap: () {
-                            _showClearDataDialog();
-                          },
+                          onTap: _showClearDataDialog,
                         ),
                       ],
                     ),
@@ -601,7 +890,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
       final firestore = FirebaseFirestore.instance;
 
-      // Delete all transactions
       final transactions = await firestore
           .collection('ExpensoUsers')
           .doc(_currentUserId)
@@ -613,7 +901,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       }
 
       if (mounted) {
-        Navigator.pop(context); // Close loading
+        Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('All data cleared successfully!'),
@@ -632,26 +920,4 @@ class _SettingsScreenState extends State<SettingsScreen> {
   }
 
   // ==================== HELPER ====================
-  String _getCurrencyName(String code) {
-    switch (code) {
-      case 'INR':
-        return 'Indian Rupee';
-      case 'USD':
-        return 'US Dollar';
-      case 'EUR':
-        return 'Euro';
-      case 'GBP':
-        return 'British Pound';
-      case 'AUD':
-        return 'Australian Dollar';
-      case 'CAD':
-        return 'Canadian Dollar';
-      case 'AED':
-        return 'UAE Dirham';
-      case 'SGD':
-        return 'Singapore Dollar';
-      default:
-        return code;
-    }
-  }
 }

@@ -22,11 +22,12 @@ dependencies:
   path_provider: ^2.1.6
   open_file: ^4.0.0
   google_fonts: ^8.1.0
+  universal_html: ^2.3.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-
+  flutter_launcher_icons: ^0.14.3
   flutter_lints: ^6.0.0
 
 flutter:
@@ -35,3 +36,25 @@ flutter:
   assets:
     - assets/images/login.png
     - assets/images/dashboard.png
+    - assets/icon/          # 🆕 Add this line
+
+# ==================== 🆕 APP ICON CONFIGURATION ====================
+flutter_launcher_icons:
+  android: true
+  ios: true
+  image_path: "assets/icon/icon.png"
+  adaptive_icon_background: "#6366F1"
+  adaptive_icon_foreground: "assets/icon/icon.png"
+  min_sdk_android: 21
+  web:
+    generate: true
+    image_path: "assets/icon/icon.png"
+    background_color: "#6366F1"
+    theme_color: "#6366F1"
+  windows:
+    generate: true
+    image_path: "assets/icon/icon.png"
+    icon_size: 48
+  macos:
+    generate: true
+    image_path: "assets/icon/icon.png"

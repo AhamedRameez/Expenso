@@ -259,7 +259,7 @@ class _ExpenseReportScreenState extends State<ExpenseReportScreen> {
     try {
       final pdf = pw.Document();
       final currencyFormat = NumberFormat.currency(
-        symbol: '₹',
+        symbol: '',
         decimalDigits: 0,
       );
       final dateFormat = DateFormat('dd-MM-yyyy');
@@ -646,7 +646,7 @@ class _ExpenseReportScreenState extends State<ExpenseReportScreen> {
   // ==================== BUILD ====================
   @override
   Widget build(BuildContext context) {
-    final currencyFormat = NumberFormat.currency(symbol: '₹', decimalDigits: 0);
+    final currencyFormat = NumberFormat.currency(symbol: '', decimalDigits: 0);
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
