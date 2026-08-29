@@ -2,8 +2,11 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:provider/provider.dart'; // ✅ NEW: For provider access
 import 'login_screen.dart';
 import 'user_dashboard.dart';
+import '../providers/subscription_provider.dart'; // ✅ NEW: Subscription provider
+import '../widgets/subscription_checker.dart'; // ✅ NEW: Subscription checker
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -52,10 +55,27 @@ class _SplashScreenState extends State<SplashScreen>
           if (userData != null && userData['isActive'] == true) {
             print('✅ User verified, navigating to Dashboard');
             if (mounted) {
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(builder: (context) => const UserDashboard()),
-              );
+              // ✅ NEW: Initialize subscription before navigating
+              try {
+                final subscriptionProvider = context
+                    .read<SubscriptionProvider>();
+                await subscriptionProvider.init();
+                print('✅ Subscription initialized');
+              } catch (e) {
+                print('⚠️ Subscription init error: $e');
+                // Continue even if subscription fails - app should still work
+              }
+
+              // ✅ CHANGED: Wrap dashboard with SubscriptionChecker
+              if (mounted) {
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) =>
+                        const SubscriptionChecker(child: UserDashboard()),
+                  ),
+                );
+              }
             }
           } else {
             print('⚠️ Account inactive, signing out');
@@ -90,10 +110,21 @@ class _SplashScreenState extends State<SplashScreen>
       print('❌ SplashScreen error: $e');
       final user = FirebaseAuth.instance.currentUser;
       if (user != null && mounted) {
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(builder: (context) => const UserDashboard()),
-        );
+        // ✅ FALLBACK: Try to navigate with subscription check
+        try {
+          final subscriptionProvider = context.read<SubscriptionProvider>();
+          await subscriptionProvider.init();
+        } catch (_) {}
+
+        if (mounted) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) =>
+                  const SubscriptionChecker(child: UserDashboard()),
+            ),
+          );
+        }
       } else if (mounted) {
         Navigator.pushReplacement(
           context,

@@ -8,6 +8,9 @@ import 'screens/splash_screen.dart';
 import 'screens/user_dashboard.dart';
 import 'services/auth_service.dart';
 
+// ✅ NEW: Import subscription provider
+import 'providers/subscription_provider.dart';
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
@@ -22,7 +25,15 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MultiProvider(
-      providers: [ChangeNotifierProvider(create: (_) => UserAuthService())],
+      providers: [
+        // ✅ EXISTING: Unchanged
+        ChangeNotifierProvider(create: (_) => UserAuthService()),
+        
+        // ✅ NEW: Add SubscriptionProvider (doesn't affect existing)
+        ChangeNotifierProvider(
+          create: (_) => SubscriptionProvider(),
+        ),
+      ],
       child: MaterialApp(
         title: 'Expenso',
         theme: ThemeData(
