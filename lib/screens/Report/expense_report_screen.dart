@@ -1,4 +1,4 @@
-// lib/screens/income_report_screen.dart
+// lib/screens/expense_report_screen.dart
 import 'dart:io';
 import 'dart:ui';
 
@@ -10,20 +10,21 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:path_provider/path_provider.dart';
 import 'package:open_file/open_file.dart';
+import 'package:universal_html/html.dart' as html;
 
-class IncomeReportScreen extends StatefulWidget {
-  const IncomeReportScreen({super.key});
+class ExpenseReportScreen extends StatefulWidget {
+  const ExpenseReportScreen({super.key});
 
   @override
-  State<IncomeReportScreen> createState() => _IncomeReportScreenState();
+  State<ExpenseReportScreen> createState() => _ExpenseReportScreenState();
 }
 
-class _IncomeReportScreenState extends State<IncomeReportScreen> {
+class _ExpenseReportScreenState extends State<ExpenseReportScreen> {
   // ==================== VARIABLES ====================
-  List<Map<String, dynamic>> _allIncomes = [];
-  List<Map<String, dynamic>> _filteredIncomes = [];
-  Map<String, double> _categoryWiseIncome = {};
-  double _totalIncome = 0.0;
+  List<Map<String, dynamic>> _allExpenses = [];
+  List<Map<String, dynamic>> _filteredExpenses = [];
+  Map<String, double> _categoryWiseExpense = {};
+  double _totalExpense = 0.0;
   bool _isLoading = true;
 
   // Date filter
@@ -33,10 +34,10 @@ class _IncomeReportScreenState extends State<IncomeReportScreen> {
 
   // Category filter
   String? _selectedCategoryFilter;
-  List<String> _incomeCategories = [];
+  List<String> _expenseCategories = [];
 
-  // Expand/collapse for Top Sources
-  bool _showAllTopSources = false;
+  // Expand/collapse for Top Spending
+  bool _showAllTopSpending = false;
 
   // Current user
   String? get _currentUserId => FirebaseAuth.instance.currentUser?.uid;
@@ -44,11 +45,11 @@ class _IncomeReportScreenState extends State<IncomeReportScreen> {
   @override
   void initState() {
     super.initState();
-    _loadIncomeData();
+    _loadExpenseData();
   }
 
-  // ==================== LOAD INCOME DATA ====================
-  Future<void> _loadIncomeData() async {
+  // ==================== LOAD EXPENSE DATA ====================
+  Future<void> _loadExpenseData() async {
     if (_currentUserId == null) return;
 
     setState(() => _isLoading = true);
@@ -60,7 +61,7 @@ class _IncomeReportScreenState extends State<IncomeReportScreen> {
           .collection('ExpensoUsers')
           .doc(_currentUserId)
           .collection('transactions')
-          .where('type', isEqualTo: 'income')
+          .where('type', isEqualTo: 'expense')
           .orderBy('date', descending: true);
 
       // Apply date filter
@@ -97,7 +98,7 @@ class _IncomeReportScreenState extends State<IncomeReportScreen> {
 
       final snapshot = await query.get();
 
-      final incomes = snapshot.docs.map((doc) {
+      final expenses = snapshot.docs.map((doc) {
         final data = doc.data() as Map<String, dynamic>;
         DateTime date;
         if (data['date'] is Timestamp) {
@@ -109,9 +110,8 @@ class _IncomeReportScreenState extends State<IncomeReportScreen> {
         return {
           'id': doc.id,
           'date': date,
-          'category': data['category'] ?? data['incomeType'] ?? 'Other',
+          'category': data['category'] ?? data['expenseType'] ?? 'Other',
           'amount': (data['amount'] as num?)?.toDouble() ?? 0.0,
-          'source': data['source'] ?? '',
           'description': data['description'] ?? '',
           'paymentMethod': data['paymentMethod'] ?? '',
         };
@@ -119,42 +119,42 @@ class _IncomeReportScreenState extends State<IncomeReportScreen> {
 
       // Extract unique categories
       final categories =
-          incomes.map((i) => i['category'] as String).toSet().toList()..sort();
+          expenses.map((e) => e['category'] as String).toSet().toList()..sort();
 
-      // Calculate category-wise income
+      // Calculate category-wise expense
       Map<String, double> categoryWise = {};
-      for (var income in incomes) {
-        final category = income['category'] as String;
-        final amount = income['amount'] as double;
+      for (var expense in expenses) {
+        final category = expense['category'] as String;
+        final amount = expense['amount'] as double;
         categoryWise[category] = (categoryWise[category] ?? 0) + amount;
       }
 
       // Apply category filter
-      List<Map<String, dynamic>> filtered = incomes;
+      List<Map<String, dynamic>> filtered = expenses;
       if (_selectedCategoryFilter != null && _selectedCategoryFilter != 'All') {
-        filtered = incomes
-            .where((i) => i['category'] == _selectedCategoryFilter)
+        filtered = expenses
+            .where((e) => e['category'] == _selectedCategoryFilter)
             .toList();
       }
 
       // Calculate total
       double total = filtered.fold(
         0.0,
-        (sum, i) => sum + (i['amount'] as double),
+        (sum, e) => sum + (e['amount'] as double),
       );
 
       if (mounted) {
         setState(() {
-          _allIncomes = incomes;
-          _filteredIncomes = filtered;
-          _incomeCategories = ['All', ...categories];
-          _categoryWiseIncome = categoryWise;
-          _totalIncome = total;
+          _allExpenses = expenses;
+          _filteredExpenses = filtered;
+          _expenseCategories = ['All', ...categories];
+          _categoryWiseExpense = categoryWise;
+          _totalExpense = total;
           _isLoading = false;
         });
       }
     } catch (e) {
-      print('❌ Error loading income data: $e');
+      print('❌ Error loading expense data: $e');
       if (mounted) {
         setState(() => _isLoading = false);
       }
@@ -178,7 +178,7 @@ class _IncomeReportScreenState extends State<IncomeReportScreen> {
         }
         _selectedMonth = null;
       });
-      _loadIncomeData();
+      _loadExpenseData();
     }
   }
 
@@ -195,7 +195,7 @@ class _IncomeReportScreenState extends State<IncomeReportScreen> {
         _toDate = picked;
         _selectedMonth = null;
       });
-      _loadIncomeData();
+      _loadExpenseData();
     }
   }
 
@@ -205,7 +205,7 @@ class _IncomeReportScreenState extends State<IncomeReportScreen> {
       _fromDate = null;
       _toDate = null;
     });
-    _loadIncomeData();
+    _loadExpenseData();
   }
 
   void _clearDateFilter() {
@@ -214,7 +214,7 @@ class _IncomeReportScreenState extends State<IncomeReportScreen> {
       _toDate = null;
       _selectedMonth = null;
     });
-    _loadIncomeData();
+    _loadExpenseData();
   }
 
   // ==================== GET PERIOD TITLE ====================
@@ -227,7 +227,7 @@ class _IncomeReportScreenState extends State<IncomeReportScreen> {
     return 'All Time';
   }
 
-  // ==================== WORKING PDF EXPORT ====================
+  // ==================== WORKING PDF EXPORT (CROSS-PLATFORM) ====================
   Future<void> _exportToPDF() async {
     // Show loading indicator
     showDialog(
@@ -242,7 +242,7 @@ class _IncomeReportScreenState extends State<IncomeReportScreen> {
         child: const Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            CircularProgressIndicator(color: Color(0xFF27AE60)),
+            CircularProgressIndicator(color: Color(0xFFE74C3C)),
             SizedBox(height: 16),
             Text(
               'Generating PDF...',
@@ -269,20 +269,20 @@ class _IncomeReportScreenState extends State<IncomeReportScreen> {
       ).format(DateTime.now());
 
       // Colors
-      final primaryColor = PdfColor.fromInt(0xFF27AE60);
+      final primaryColor = PdfColor.fromInt(0xFFE74C3C);
       final darkColor = PdfColor.fromInt(0xFF1E293B);
       final greyColor = PdfColor.fromInt(0xFF64748B);
       final lightGreyColor = PdfColor.fromInt(0xFFF1F5F9);
       final whiteColor = PdfColor.fromInt(0xFFFFFFFF);
 
       // Build category breakdown widgets list
-      final sortedCategories = _categoryWiseIncome.entries.toList()
+      final sortedCategories = _categoryWiseExpense.entries.toList()
         ..sort((a, b) => b.value.compareTo(a.value));
 
       List<pw.Widget> categoryWidgets = [];
       for (var entry in sortedCategories) {
-        final percentage = _totalIncome > 0
-            ? (entry.value / _totalIncome * 100)
+        final percentage = _totalExpense > 0
+            ? (entry.value / _totalExpense * 100)
             : 0.0;
         categoryWidgets.add(
           pw.Container(
@@ -332,7 +332,7 @@ class _IncomeReportScreenState extends State<IncomeReportScreen> {
                 ),
                 pw.SizedBox(height: 2),
                 pw.Text(
-                  '${percentage.toStringAsFixed(1)}% (${_allIncomes.where((e) => e['category'] == entry.key).length} transactions)',
+                  '${percentage.toStringAsFixed(1)}% (${_allExpenses.where((e) => e['category'] == entry.key).length} transactions)',
                   style: pw.TextStyle(fontSize: 9, color: greyColor),
                 ),
               ],
@@ -372,7 +372,7 @@ class _IncomeReportScreenState extends State<IncomeReportScreen> {
                       ),
                       pw.SizedBox(height: 4),
                       pw.Text(
-                        'Income Report',
+                        'Expense Report',
                         style: pw.TextStyle(
                           fontSize: 16,
                           color: darkColor,
@@ -405,47 +405,31 @@ class _IncomeReportScreenState extends State<IncomeReportScreen> {
             pw.Container(
               padding: const pw.EdgeInsets.all(16),
               decoration: pw.BoxDecoration(
-                color: PdfColor.fromInt(0xFFF0FDF4),
+                color: PdfColor.fromInt(0xFFFEF2F2),
                 borderRadius: pw.BorderRadius.circular(8),
-                border: pw.Border.all(color: PdfColor.fromInt(0xFFBBF7D0)),
+                border: pw.Border.all(color: PdfColor.fromInt(0xFFFECACA)),
               ),
               child: pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceAround,
                 children: [
                   _buildPdfSummaryItem(
-                    'Total Income',
-                    currencyFormat.format(_totalIncome),
+                    'Total Expenses',
+                    currencyFormat.format(_totalExpense),
                     primaryColor,
                   ),
                   _buildPdfSummaryItem(
                     'Transactions',
-                    '${_filteredIncomes.length}',
+                    '${_filteredExpenses.length}',
                     darkColor,
                   ),
                   _buildPdfSummaryItem(
                     'Categories',
-                    '${_categoryWiseIncome.length}',
+                    '${_categoryWiseExpense.length}',
                     darkColor,
                   ),
                 ],
               ),
             ),
-
-            pw.SizedBox(height: 20),
-
-            // ===== CATEGORY BREAKDOWN =====
-            pw.Text(
-              'Category-wise Breakdown',
-              style: pw.TextStyle(
-                fontSize: 16,
-                fontWeight: pw.FontWeight.bold,
-                color: darkColor,
-              ),
-            ),
-            pw.SizedBox(height: 12),
-
-            // Add all category widgets
-            ...categoryWidgets,
 
             pw.SizedBox(height: 20),
 
@@ -480,16 +464,18 @@ class _IncomeReportScreenState extends State<IncomeReportScreen> {
                 vertical: 8,
               ),
               oddRowDecoration: pw.BoxDecoration(color: lightGreyColor),
-              headers: ['#', 'Date', 'Category', 'Source', 'Amount'],
-              data: _filteredIncomes.asMap().entries.map((entry) {
+              headers: ['#', 'Date', 'Category', 'Payment', 'Amount'],
+              data: _filteredExpenses.asMap().entries.map((entry) {
                 final i = entry.key + 1;
-                final inc = entry.value;
+                final exp = entry.value;
                 return [
                   '$i',
-                  dateFormat.format(inc['date'] as DateTime),
-                  inc['category'] ?? '-',
-                  inc['source']?.isNotEmpty == true ? inc['source'] : '-',
-                  currencyFormat.format(inc['amount'] ?? 0),
+                  dateFormat.format(exp['date'] as DateTime),
+                  exp['category'] ?? '-',
+                  exp['paymentMethod']?.isNotEmpty == true
+                      ? exp['paymentMethod']
+                      : '-',
+                  currencyFormat.format(exp['amount'] ?? 0),
                 ];
               }).toList(),
             ),
@@ -500,14 +486,14 @@ class _IncomeReportScreenState extends State<IncomeReportScreen> {
             pw.Container(
               padding: const pw.EdgeInsets.all(12),
               decoration: pw.BoxDecoration(
-                color: PdfColor.fromInt(0xFFF0FDF4),
+                color: PdfColor.fromInt(0xFFFEF2F2),
                 borderRadius: pw.BorderRadius.circular(4),
               ),
               child: pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
                   pw.Text(
-                    'TOTAL INCOME',
+                    'TOTAL EXPENSES',
                     style: pw.TextStyle(
                       fontSize: 14,
                       fontWeight: pw.FontWeight.bold,
@@ -515,7 +501,7 @@ class _IncomeReportScreenState extends State<IncomeReportScreen> {
                     ),
                   ),
                   pw.Text(
-                    currencyFormat.format(_totalIncome),
+                    currencyFormat.format(_totalExpense),
                     style: pw.TextStyle(
                       fontSize: 16,
                       fontWeight: pw.FontWeight.bold,
@@ -554,53 +540,108 @@ class _IncomeReportScreenState extends State<IncomeReportScreen> {
         ),
       );
 
-      // Save PDF to temporary directory
-      final output = await getTemporaryDirectory();
+      // ==================== SAVE & DOWNLOAD (CROSS-PLATFORM: WEB + MOBILE) ====================
+      final pdfBytes = await pdf.save();
       final fileName =
-          'Income_Report_${DateFormat('yyyyMMdd_HHmmss').format(DateTime.now())}.pdf';
-      final file = File('${output.path}/$fileName');
-      await file.writeAsBytes(await pdf.save());
+          'Expense_Report_${DateFormat('yyyyMMdd_HHmmss').format(DateTime.now())}.pdf';
 
       if (mounted) {
         Navigator.pop(context); // Close loading dialog
+      }
 
-        // Show success and open file
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.check_circle, color: Colors.white, size: 18),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'PDF saved: $fileName',
-                    style: const TextStyle(fontSize: 12),
+      // Try Web download first, fall back to Mobile save
+      try {
+        // Web: Download via browser using universal_html
+        final blob = html.Blob([pdfBytes], 'application/pdf');
+        final url = html.Url.createObjectUrlFromBlob(blob);
+        final anchor = html.AnchorElement(href: url)
+          ..setAttribute('download', fileName)
+          ..click();
+        html.Url.revokeObjectUrl(url);
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.check_circle, color: Colors.white, size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Download started: $fileName',
+                      style: const TextStyle(fontSize: 12),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
+              backgroundColor: Colors.green,
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 3),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              margin: const EdgeInsets.all(16),
             ),
-            backgroundColor: Colors.green,
-            behavior: SnackBarBehavior.floating,
-            duration: const Duration(seconds: 3),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            margin: const EdgeInsets.all(16),
-            action: SnackBarAction(
-              label: 'Open',
-              textColor: Colors.white,
-              onPressed: () => OpenFile.open(file.path),
-            ),
-          ),
-        );
+          );
+        }
+      } catch (e) {
+        // Mobile: Save to temp and open
+        try {
+          final output = await getTemporaryDirectory();
+          final file = File('${output.path}/$fileName');
+          await file.writeAsBytes(pdfBytes);
 
-        // Auto-open the PDF
-        await OpenFile.open(file.path);
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Row(
+                  children: [
+                    const Icon(
+                      Icons.check_circle,
+                      color: Colors.white,
+                      size: 18,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'PDF saved: $fileName',
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                    ),
+                  ],
+                ),
+                backgroundColor: Colors.green,
+                behavior: SnackBarBehavior.floating,
+                duration: const Duration(seconds: 3),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                margin: const EdgeInsets.all(16),
+                action: SnackBarAction(
+                  label: 'Open',
+                  textColor: Colors.white,
+                  onPressed: () => OpenFile.open(file.path),
+                ),
+              ),
+            );
+            await OpenFile.open(file.path);
+          }
+        } catch (mobileError) {
+          print('❌ Mobile save error: $mobileError');
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Failed to save PDF: $mobileError'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+        }
       }
     } catch (e) {
       print('❌ PDF Error: $e');
       if (mounted) {
-        Navigator.pop(context); // Close loading dialog
+        Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Row(
@@ -651,7 +692,7 @@ class _IncomeReportScreenState extends State<IncomeReportScreen> {
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
         title: const Text(
-          'Income Report',
+          'Expense Report',
           style: TextStyle(
             fontWeight: FontWeight.w600,
             fontSize: 18,
@@ -661,25 +702,24 @@ class _IncomeReportScreenState extends State<IncomeReportScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         centerTitle: false,
-        leading: Container(
-          margin: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: const Color(0xFFF1F5F9),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: IconButton(
-            icon: const Icon(
-              Icons.arrow_back_ios,
-              size: 18,
-              color: Color(0xFF475569),
-            ),
-            onPressed: () => Navigator.pop(context),
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
-          ),
-        ),
+        // leading: Container(
+        //   margin: const EdgeInsets.all(8),
+        //   decoration: BoxDecoration(
+        //     color: const Color(0xFFF1F5F9),
+        //     borderRadius: BorderRadius.circular(12),
+        //   ),
+        //   // child: IconButton(
+        //   //   icon: const Icon(
+        //   //     Icons.arrow_back_ios,
+        //   //     size: 18,
+        //   //     color: Color(0xFF475569),
+        //   //   ),
+        //   //   onPressed: () => Navigator.pop(context),
+        //   //   padding: EdgeInsets.zero,
+        //   //   constraints: const BoxConstraints(),
+        //   // ),
+        // ),
         actions: [
-          // PDF Export Button
           Container(
             margin: const EdgeInsets.all(8),
             decoration: BoxDecoration(
@@ -698,20 +738,19 @@ class _IncomeReportScreenState extends State<IncomeReportScreen> {
               tooltip: 'Export PDF',
             ),
           ),
-          // Refresh Button
           Container(
             margin: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: const Color(0xFF27AE60).withOpacity(0.1),
+              color: const Color(0xFFE74C3C).withOpacity(0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: IconButton(
               icon: const Icon(
                 Icons.refresh_rounded,
                 size: 20,
-                color: Color(0xFF27AE60),
+                color: Color(0xFFE74C3C),
               ),
-              onPressed: _loadIncomeData,
+              onPressed: _loadExpenseData,
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(),
               tooltip: 'Refresh',
@@ -726,24 +765,15 @@ class _IncomeReportScreenState extends State<IncomeReportScreen> {
               padding: const EdgeInsets.all(16),
               child: Column(
                 children: [
-                  // Income Summary Card
                   _buildSummaryCard(currencyFormat),
                   const SizedBox(height: 16),
-
-                  // Date Filter
                   _buildDateFilterSection(),
                   const SizedBox(height: 16),
-
-                  // Category Filter Dropdown
                   _buildCategoryDropdownFilter(currencyFormat),
                   const SizedBox(height: 16),
-
-                  // Top Categories (with click arrow)
-                  _buildTopCategories(currencyFormat),
+                  _buildTopSpendingCategories(currencyFormat),
                   const SizedBox(height: 16),
-
-                  // Income List
-                  _buildIncomeTable(currencyFormat),
+                  _buildExpenseTable(currencyFormat),
                   const SizedBox(height: 20),
                 ],
               ),
@@ -757,14 +787,14 @@ class _IncomeReportScreenState extends State<IncomeReportScreen> {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [Color(0xFF27AE60), Color(0xFF2ECC71)],
+          colors: [Color(0xFFE74C3C), Color(0xFFC0392B)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF27AE60).withOpacity(0.3),
+            color: const Color(0xFFE74C3C).withOpacity(0.3),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -781,7 +811,7 @@ class _IncomeReportScreenState extends State<IncomeReportScreen> {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Icon(
-                  Icons.trending_up_rounded,
+                  Icons.trending_down_rounded,
                   color: Colors.white,
                   size: 24,
                 ),
@@ -792,7 +822,7 @@ class _IncomeReportScreenState extends State<IncomeReportScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'Total Income',
+                      'Total Expenses',
                       style: TextStyle(
                         fontSize: 14,
                         color: Colors.white70,
@@ -801,7 +831,7 @@ class _IncomeReportScreenState extends State<IncomeReportScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      currencyFormat.format(_totalIncome),
+                      currencyFormat.format(_totalExpense),
                       style: const TextStyle(
                         fontSize: 28,
                         fontWeight: FontWeight.bold,
@@ -818,14 +848,14 @@ class _IncomeReportScreenState extends State<IncomeReportScreen> {
             children: [
               _buildSummaryStat(
                 label: 'Transactions',
-                value: '${_filteredIncomes.length}',
+                value: '${_filteredExpenses.length}',
               ),
               const SizedBox(width: 16),
               _buildSummaryStat(label: 'Period', value: _getPeriodTitle()),
               const SizedBox(width: 16),
               _buildSummaryStat(
                 label: 'Categories',
-                value: '${_categoryWiseIncome.length}',
+                value: '${_categoryWiseExpense.length}',
               ),
             ],
           ),
@@ -869,7 +899,6 @@ class _IncomeReportScreenState extends State<IncomeReportScreen> {
   // ==================== DATE FILTER SECTION ====================
   Widget _buildDateFilterSection() {
     final dateFormat = DateFormat('dd-MM-yy');
-
     return ClipRRect(
       borderRadius: BorderRadius.circular(16),
       child: BackdropFilter(
@@ -888,7 +917,7 @@ class _IncomeReportScreenState extends State<IncomeReportScreen> {
                   const Icon(
                     Icons.date_range,
                     size: 16,
-                    color: Color(0xFF27AE60),
+                    color: Color(0xFFE74C3C),
                   ),
                   const SizedBox(width: 8),
                   const Text(
@@ -932,7 +961,7 @@ class _IncomeReportScreenState extends State<IncomeReportScreen> {
                           borderRadius: BorderRadius.circular(10),
                           border: Border.all(
                             color: _fromDate != null
-                                ? const Color(0xFF27AE60).withOpacity(0.5)
+                                ? const Color(0xFFE74C3C).withOpacity(0.5)
                                 : Colors.grey.withOpacity(0.3),
                           ),
                         ),
@@ -971,7 +1000,7 @@ class _IncomeReportScreenState extends State<IncomeReportScreen> {
                           borderRadius: BorderRadius.circular(10),
                           border: Border.all(
                             color: _toDate != null
-                                ? const Color(0xFF27AE60).withOpacity(0.5)
+                                ? const Color(0xFFE74C3C).withOpacity(0.5)
                                 : Colors.grey.withOpacity(0.3),
                           ),
                         ),
@@ -1005,19 +1034,19 @@ class _IncomeReportScreenState extends State<IncomeReportScreen> {
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
           color: _selectedMonth != null
-              ? const Color(0xFF27AE60).withOpacity(0.1)
+              ? const Color(0xFFE74C3C).withOpacity(0.1)
               : const Color(0xFFF8FAFC),
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
             color: _selectedMonth != null
-                ? const Color(0xFF27AE60).withOpacity(0.3)
+                ? const Color(0xFFE74C3C).withOpacity(0.3)
                 : Colors.grey.withOpacity(0.3),
           ),
         ),
         child: Icon(
           Icons.calendar_month_rounded,
           size: 18,
-          color: _selectedMonth != null ? const Color(0xFF27AE60) : Colors.grey,
+          color: _selectedMonth != null ? const Color(0xFFE74C3C) : Colors.grey,
         ),
       ),
     );
@@ -1029,7 +1058,6 @@ class _IncomeReportScreenState extends State<IncomeReportScreen> {
     for (int i = 0; i < 12; i++) {
       months.add(DateTime(now.year, now.month - i, 1));
     }
-
     showMenu<String>(
       context: context,
       position: RelativeRect.fromLTRB(
@@ -1068,7 +1096,6 @@ class _IncomeReportScreenState extends State<IncomeReportScreen> {
               _selectedMonth!.year == month.year &&
               _selectedMonth!.month == month.month;
           final monthKey = 'month_${month.year}_${month.month}';
-
           return PopupMenuItem<String>(
             value: monthKey,
             child: Row(
@@ -1076,7 +1103,7 @@ class _IncomeReportScreenState extends State<IncomeReportScreen> {
                 Icon(
                   Icons.calendar_month_outlined,
                   size: 16,
-                  color: isSelected ? const Color(0xFF27AE60) : Colors.grey,
+                  color: isSelected ? const Color(0xFFE74C3C) : Colors.grey,
                 ),
                 const SizedBox(width: 8),
                 Text(
@@ -1087,13 +1114,13 @@ class _IncomeReportScreenState extends State<IncomeReportScreen> {
                         ? FontWeight.w600
                         : FontWeight.normal,
                     color: isSelected
-                        ? const Color(0xFF27AE60)
+                        ? const Color(0xFFE74C3C)
                         : Colors.black87,
                   ),
                 ),
                 if (isSelected) ...[
                   const Spacer(),
-                  const Icon(Icons.check, size: 16, color: Color(0xFF27AE60)),
+                  const Icon(Icons.check, size: 16, color: Color(0xFFE74C3C)),
                 ],
               ],
             ),
@@ -1114,8 +1141,7 @@ class _IncomeReportScreenState extends State<IncomeReportScreen> {
 
   // ==================== CATEGORY DROPDOWN FILTER ====================
   Widget _buildCategoryDropdownFilter(NumberFormat currencyFormat) {
-    if (_incomeCategories.length <= 1) return const SizedBox();
-
+    if (_expenseCategories.length <= 1) return const SizedBox();
     return ClipRRect(
       borderRadius: BorderRadius.circular(16),
       child: BackdropFilter(
@@ -1135,7 +1161,7 @@ class _IncomeReportScreenState extends State<IncomeReportScreen> {
                   const Icon(
                     Icons.category_outlined,
                     size: 16,
-                    color: Color(0xFF27AE60),
+                    color: Color(0xFFE74C3C),
                   ),
                   const SizedBox(width: 8),
                   const Text(
@@ -1155,14 +1181,14 @@ class _IncomeReportScreenState extends State<IncomeReportScreen> {
                         vertical: 2,
                       ),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF27AE60).withOpacity(0.1),
+                        color: const Color(0xFFE74C3C).withOpacity(0.1),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Text(
-                        '${_filteredIncomes.length} results',
+                        '${_filteredExpenses.length} results',
                         style: const TextStyle(
                           fontSize: 10,
-                          color: Color(0xFF27AE60),
+                          color: Color(0xFFE74C3C),
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -1187,24 +1213,23 @@ class _IncomeReportScreenState extends State<IncomeReportScreen> {
                       color: Color(0xFF1E293B),
                       fontWeight: FontWeight.w500,
                     ),
-                    items: _incomeCategories.map((category) {
+                    items: _expenseCategories.map((category) {
                       final count = category == 'All'
-                          ? _allIncomes.length
-                          : _allIncomes
-                                .where((i) => i['category'] == category)
+                          ? _allExpenses.length
+                          : _allExpenses
+                                .where((e) => e['category'] == category)
                                 .length;
                       final amount = category == 'All'
-                          ? _allIncomes.fold(
+                          ? _allExpenses.fold(
                               0.0,
-                              (sum, i) => sum + (i['amount'] as double),
+                              (sum, e) => sum + (e['amount'] as double),
                             )
-                          : _allIncomes
-                                .where((i) => i['category'] == category)
+                          : _allExpenses
+                                .where((e) => e['category'] == category)
                                 .fold(
                                   0.0,
-                                  (sum, i) => sum + (i['amount'] as double),
+                                  (sum, e) => sum + (e['amount'] as double),
                                 );
-
                       return DropdownMenuItem<String>(
                         value: category,
                         child: Row(
@@ -1215,7 +1240,7 @@ class _IncomeReportScreenState extends State<IncomeReportScreen> {
                               decoration: BoxDecoration(
                                 color: category == 'All'
                                     ? const Color(0xFF6366F1)
-                                    : const Color(0xFF27AE60),
+                                    : const Color(0xFFE74C3C),
                                 borderRadius: BorderRadius.circular(2),
                               ),
                             ),
@@ -1248,9 +1273,9 @@ class _IncomeReportScreenState extends State<IncomeReportScreen> {
                     onChanged: (value) {
                       setState(() {
                         _selectedCategoryFilter = value == 'All' ? null : value;
-                        _showAllTopSources = false;
+                        _showAllTopSpending = false;
                       });
-                      _loadIncomeData();
+                      _loadExpenseData();
                     },
                   ),
                 ),
@@ -1262,25 +1287,22 @@ class _IncomeReportScreenState extends State<IncomeReportScreen> {
     );
   }
 
-  // ==================== TOP CATEGORIES (COLLAPSIBLE) ====================
-  Widget _buildTopCategories(NumberFormat currencyFormat) {
+  // ==================== TOP SPENDING CATEGORIES (COLLAPSIBLE) ====================
+  Widget _buildTopSpendingCategories(NumberFormat currencyFormat) {
     List<MapEntry<String, double>> sorted;
     if (_selectedCategoryFilter != null && _selectedCategoryFilter != 'All') {
-      sorted = _categoryWiseIncome.entries
+      sorted = _categoryWiseExpense.entries
           .where((e) => e.key == _selectedCategoryFilter)
           .toList();
     } else {
-      sorted = _categoryWiseIncome.entries.toList()
+      sorted = _categoryWiseExpense.entries.toList()
         ..sort((a, b) => b.value.compareTo(a.value));
     }
-
     if (sorted.isEmpty) return const SizedBox();
-
     final totalForCalculation =
         _selectedCategoryFilter != null && _selectedCategoryFilter != 'All'
         ? sorted.first.value
-        : _allIncomes.fold(0.0, (sum, i) => sum + (i['amount'] as double));
-
+        : _allExpenses.fold(0.0, (sum, e) => sum + (e['amount'] as double));
     return ClipRRect(
       borderRadius: BorderRadius.circular(16),
       child: BackdropFilter(
@@ -1293,13 +1315,9 @@ class _IncomeReportScreenState extends State<IncomeReportScreen> {
           ),
           child: Column(
             children: [
-              // Header
               GestureDetector(
-                onTap: () {
-                  setState(() {
-                    _showAllTopSources = !_showAllTopSources;
-                  });
-                },
+                onTap: () =>
+                    setState(() => _showAllTopSpending = !_showAllTopSpending),
                 child: Padding(
                   padding: const EdgeInsets.all(16),
                   child: Row(
@@ -1308,14 +1326,14 @@ class _IncomeReportScreenState extends State<IncomeReportScreen> {
                         width: 3,
                         height: 18,
                         decoration: BoxDecoration(
-                          color: const Color(0xFFF39C12),
+                          color: const Color(0xFFE74C3C),
                           borderRadius: BorderRadius.circular(2),
                         ),
                       ),
                       const SizedBox(width: 8),
                       const Expanded(
                         child: Text(
-                          'Top Income Sources',
+                          'Top Spending Categories',
                           style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w700,
@@ -1326,16 +1344,16 @@ class _IncomeReportScreenState extends State<IncomeReportScreen> {
                       Container(
                         padding: const EdgeInsets.all(6),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFF39C12).withOpacity(0.1),
+                          color: const Color(0xFFE74C3C).withOpacity(0.1),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: AnimatedRotation(
-                          turns: _showAllTopSources ? 0.5 : 0,
+                          turns: _showAllTopSpending ? 0.5 : 0,
                           duration: const Duration(milliseconds: 300),
                           child: const Icon(
                             Icons.keyboard_arrow_down_rounded,
                             size: 22,
-                            color: Color(0xFFF39C12),
+                            color: Color(0xFFE74C3C),
                           ),
                         ),
                       ),
@@ -1343,8 +1361,6 @@ class _IncomeReportScreenState extends State<IncomeReportScreen> {
                   ),
                 ),
               ),
-
-              // Expandable Content
               AnimatedCrossFade(
                 firstChild: const SizedBox(height: 0, width: double.infinity),
                 secondChild: Padding(
@@ -1354,10 +1370,9 @@ class _IncomeReportScreenState extends State<IncomeReportScreen> {
                       final percentage = totalForCalculation > 0
                           ? (entry.value / totalForCalculation * 100)
                           : 0.0;
-                      final transactionCount = _allIncomes
-                          .where((i) => i['category'] == entry.key)
+                      final transactionCount = _allExpenses
+                          .where((e) => e['category'] == entry.key)
                           .length;
-
                       return Padding(
                         padding: const EdgeInsets.only(bottom: 12),
                         child: Column(
@@ -1384,7 +1399,7 @@ class _IncomeReportScreenState extends State<IncomeReportScreen> {
                                   style: const TextStyle(
                                     fontSize: 13,
                                     fontWeight: FontWeight.bold,
-                                    color: Color(0xFF27AE60),
+                                    color: Color(0xFFE74C3C),
                                   ),
                                 ),
                               ],
@@ -1395,7 +1410,7 @@ class _IncomeReportScreenState extends State<IncomeReportScreen> {
                               child: LinearProgressIndicator(
                                 value: percentage / 100,
                                 backgroundColor: Colors.grey.shade200,
-                                color: const Color(0xFF27AE60),
+                                color: const Color(0xFFE74C3C),
                                 minHeight: 6,
                               ),
                             ),
@@ -1404,7 +1419,7 @@ class _IncomeReportScreenState extends State<IncomeReportScreen> {
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Text(
-                                  '${percentage.toStringAsFixed(1)}% of income',
+                                  '${percentage.toStringAsFixed(1)}% of expenses',
                                   style: TextStyle(
                                     fontSize: 10,
                                     color: Colors.grey.shade500,
@@ -1425,7 +1440,7 @@ class _IncomeReportScreenState extends State<IncomeReportScreen> {
                     }).toList(),
                   ),
                 ),
-                crossFadeState: _showAllTopSources
+                crossFadeState: _showAllTopSpending
                     ? CrossFadeState.showSecond
                     : CrossFadeState.showFirst,
                 duration: const Duration(milliseconds: 350),
@@ -1437,10 +1452,9 @@ class _IncomeReportScreenState extends State<IncomeReportScreen> {
     );
   }
 
-  // ==================== INCOME TABLE ====================
-  Widget _buildIncomeTable(NumberFormat currencyFormat) {
+  // ==================== EXPENSE TABLE ====================
+  Widget _buildExpenseTable(NumberFormat currencyFormat) {
     final dateFormat = DateFormat('dd-MM-yy');
-
     return ClipRRect(
       borderRadius: BorderRadius.circular(16),
       child: BackdropFilter(
@@ -1453,14 +1467,13 @@ class _IncomeReportScreenState extends State<IncomeReportScreen> {
           ),
           child: Column(
             children: [
-              // Table Header
               Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 12,
                   vertical: 12,
                 ),
                 decoration: const BoxDecoration(
-                  color: Color(0xFF27AE60),
+                  color: Color(0xFFE74C3C),
                   borderRadius: BorderRadius.only(
                     topLeft: Radius.circular(16),
                     topRight: Radius.circular(16),
@@ -1504,7 +1517,7 @@ class _IncomeReportScreenState extends State<IncomeReportScreen> {
                     const Expanded(
                       flex: 2,
                       child: Text(
-                        'Source',
+                        'Payment',
                         style: TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
@@ -1527,9 +1540,7 @@ class _IncomeReportScreenState extends State<IncomeReportScreen> {
                   ],
                 ),
               ),
-
-              // Table Body
-              if (_filteredIncomes.isEmpty)
+              if (_filteredExpenses.isEmpty)
                 Container(
                   padding: const EdgeInsets.all(40),
                   child: Column(
@@ -1541,18 +1552,18 @@ class _IncomeReportScreenState extends State<IncomeReportScreen> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'No income records found',
+                        'No expense records found',
                         style: TextStyle(color: Colors.grey.shade500),
                       ),
                     ],
                   ),
                 )
               else
-                ..._filteredIncomes.take(15).toList().asMap().entries.map((
+                ..._filteredExpenses.take(15).toList().asMap().entries.map((
                   entry,
                 ) {
                   final index = entry.key;
-                  final income = entry.value;
+                  final expense = entry.value;
                   return Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 12,
@@ -1578,14 +1589,14 @@ class _IncomeReportScreenState extends State<IncomeReportScreen> {
                         Expanded(
                           flex: 2,
                           child: Text(
-                            dateFormat.format(income['date'] as DateTime),
+                            dateFormat.format(expense['date'] as DateTime),
                             style: const TextStyle(fontSize: 11),
                           ),
                         ),
                         Expanded(
                           flex: 3,
                           child: Text(
-                            income['category'] ?? '-',
+                            expense['category'] ?? '-',
                             style: const TextStyle(fontSize: 11),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -1594,12 +1605,13 @@ class _IncomeReportScreenState extends State<IncomeReportScreen> {
                         Expanded(
                           flex: 2,
                           child: Text(
-                            income['source']?.isNotEmpty == true
-                                ? income['source']
+                            expense['paymentMethod']?.isNotEmpty == true
+                                ? expense['paymentMethod']
                                 : '-',
                             style: TextStyle(
                               fontSize: 11,
-                              color: income['source']?.isNotEmpty == true
+                              color:
+                                  expense['paymentMethod']?.isNotEmpty == true
                                   ? Colors.black87
                                   : Colors.grey,
                             ),
@@ -1610,11 +1622,11 @@ class _IncomeReportScreenState extends State<IncomeReportScreen> {
                         Expanded(
                           flex: 2,
                           child: Text(
-                            '+ ${currencyFormat.format(income['amount'])}',
+                            '- ${currencyFormat.format(expense['amount'])}',
                             style: const TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
-                              color: Color(0xFF27AE60),
+                              color: Color(0xFFE74C3C),
                             ),
                             textAlign: TextAlign.right,
                           ),
@@ -1623,8 +1635,6 @@ class _IncomeReportScreenState extends State<IncomeReportScreen> {
                     ),
                   );
                 }),
-
-              // Total Row
               Container(
                 padding: const EdgeInsets.symmetric(
                   horizontal: 12,
@@ -1648,22 +1658,22 @@ class _IncomeReportScreenState extends State<IncomeReportScreen> {
                       ),
                     ),
                     Text(
-                      currencyFormat.format(_totalIncome),
+                      currencyFormat.format(_totalExpense),
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 12,
-                        color: Color(0xFF27AE60),
+                        color: Color(0xFFE74C3C),
                       ),
                     ),
                     const Spacer(),
                     Text(
-                      '${_filteredIncomes.length} transactions',
+                      '${_filteredExpenses.length} transactions',
                       style: TextStyle(
                         fontSize: 10,
                         color: Colors.grey.shade600,
                       ),
                     ),
-                    if (_filteredIncomes.length > 15)
+                    if (_filteredExpenses.length > 15)
                       Text(
                         ' (Showing 15)',
                         style: TextStyle(

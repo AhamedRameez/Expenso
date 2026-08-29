@@ -23,6 +23,44 @@
           "other_platform_oauth_client": []
         }
       }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:789081695498:android:a4de04d6284bb9a91dc6f3",
+        "android_client_info": {
+          "package_name": "com.example.super_admin"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCdStzz9_V9lNPHKgBun5sFMXRojJfSnrE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:789081695498:android:2704afe78d379db61dc6f3",
+        "android_client_info": {
+          "package_name": "com.saktechnosolution.expenso"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCdStzz9_V9lNPHKgBun5sFMXRojJfSnrE"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
     }
   ],
   "configuration_version": "1"

@@ -3,9 +3,13 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
-import 'login_screen.dart';
-import 'profile_screen.dart';
-import 'password_change_screen.dart';
+import '../login_screen.dart';
+import '../profile_screen.dart';
+import '../password_change_screen.dart';
+import 'about_app_screen.dart';
+import 'about_us_screen.dart';
+import 'privacy_screen.dart';
+import 'terms_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -664,52 +668,52 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
                   const SizedBox(height: 20),
 
-                  // Data Section
-                  _buildSectionTitle('Data'),
-                  const SizedBox(height: 8),
-                  Container(
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(16),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.grey.withOpacity(0.05),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      children: [
-                        _buildSettingTile(
-                          icon: Icons.backup_outlined,
-                          iconColor: const Color(0xFF3498DB),
-                          title: 'Backup Data',
-                          subtitle: 'Save all transactions to cloud',
-                          onTap: _backupData,
-                        ),
-                        const Divider(height: 1, indent: 56),
-                        _buildSettingTile(
-                          icon: Icons.restore_outlined,
-                          iconColor: const Color(0xFFE67E22),
-                          title: 'Restore Data',
-                          subtitle: 'Restore from previous backup',
-                          onTap: _restoreData,
-                        ),
-                        const Divider(height: 1, indent: 56),
-                        _buildSettingTile(
-                          icon: Icons.delete_outline,
-                          iconColor: Colors.red,
-                          title: 'Clear All Data',
-                          subtitle: 'Delete all transactions',
-                          titleColor: Colors.red,
-                          onTap: _showClearDataDialog,
-                        ),
-                      ],
-                    ),
-                  ),
+                  // // Data Section
+                  // _buildSectionTitle('Data'),
+                  // const SizedBox(height: 8),
+                  // Container(
+                  //   decoration: BoxDecoration(
+                  //     color: Colors.white,
+                  //     borderRadius: BorderRadius.circular(16),
+                  //     boxShadow: [
+                  //       BoxShadow(
+                  //         color: Colors.grey.withOpacity(0.05),
+                  //         blurRadius: 8,
+                  //         offset: const Offset(0, 2),
+                  //       ),
+                  //     ],
+                  //   ),
+                  //   // child: Column(
+                  //   //   // children: [
+                  //   //   //   _buildSettingTile(
+                  //   //   //     icon: Icons.backup_outlined,
+                  //   //   //     iconColor: const Color(0xFF3498DB),
+                  //   //   //     title: 'Backup Data',
+                  //   //   //     subtitle: 'Save all transactions to cloud',
+                  //   //   //     onTap: _backupData,
+                  //   //   //   ),
+                  //   //   //   const Divider(height: 1, indent: 56),
+                  //   //   //   _buildSettingTile(
+                  //   //   //     icon: Icons.restore_outlined,
+                  //   //   //     iconColor: const Color(0xFFE67E22),
+                  //   //   //     title: 'Restore Data',
+                  //   //   //     subtitle: 'Restore from previous backup',
+                  //   //   //     onTap: _restoreData,
+                  //   //   //   ),
+                  //   //   //   const Divider(height: 1, indent: 56),
+                  //   //   //   _buildSettingTile(
+                  //   //   //     icon: Icons.delete_outline,
+                  //   //   //     iconColor: Colors.red,
+                  //   //   //     title: 'Clear All Data',
+                  //   //   //     subtitle: 'Delete all transactions',
+                  //   //   //     titleColor: Colors.red,
+                  //   //   //     onTap: _showClearDataDialog,
+                  //   //   //   ),
+                  //   //   // ],
+                  //   // ),
+                  // ),
 
-                  const SizedBox(height: 20),
+                  // const SizedBox(height: 20),
 
                   // About Section
                   _buildSectionTitle('About'),
@@ -733,20 +737,54 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           iconColor: Colors.grey,
                           title: 'App Version',
                           subtitle: '1.0.0',
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const AboutAppScreen(),
+                              ),
+                            );
+                          },
                         ),
-                        const Divider(height: 1, indent: 56),
+                        _buildSettingTile(
+                          icon: Icons.privacy_tip_outlined,
+                          iconColor: Colors.grey,
+                          title: 'About Us',
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const AboutUsScreen(),
+                              ),
+                            );
+                          },
+                        ),
                         _buildSettingTile(
                           icon: Icons.privacy_tip_outlined,
                           iconColor: Colors.grey,
                           title: 'Privacy Policy',
-                          onTap: () {},
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const PrivacyScreen(),
+                              ),
+                            );
+                          },
                         ),
                         const Divider(height: 1, indent: 56),
                         _buildSettingTile(
                           icon: Icons.description_outlined,
                           iconColor: Colors.grey,
                           title: 'Terms of Service',
-                          onTap: () {},
+                          onTap: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const TermsScreen(),
+                              ),
+                            );
+                          },
                         ),
                       ],
                     ),

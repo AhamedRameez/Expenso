@@ -4,6 +4,8 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
 import 'firebase_options.dart';
 import 'screens/login_screen.dart';
+import 'screens/splash_screen.dart';
+import 'screens/user_dashboard.dart';
 import 'services/auth_service.dart';
 
 void main() async {
@@ -28,7 +30,12 @@ class MyApp extends StatelessWidget {
           useMaterial3: true,
           fontFamily: 'Poppins',
         ),
-        home: const LoginScreen(), // 👈 Directly start with LoginScreen
+        initialRoute: '/',
+        routes: {
+          '/': (context) => const SplashScreen(),
+          '/login': (context) => const LoginScreen(),
+          '/dashboard': (context) => const UserDashboard(),
+        },
         debugShowCheckedModeBanner: false,
       ),
     );

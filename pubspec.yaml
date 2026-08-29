@@ -1,7 +1,7 @@
 name: expenso
 description: "A new Flutter project."
 publish_to: 'none' # Remove this line if you wish to publish to pub.dev
-version: 1.0.0+1
+version: 1.0.0+4
 
 environment:
   sdk: ^3.11.5
@@ -23,6 +23,7 @@ dependencies:
   open_file: ^4.0.0
   google_fonts: ^8.1.0
   universal_html: ^2.3.0
+  url_launcher: ^6.3.2
 
 dev_dependencies:
   flutter_test:
@@ -36,7 +37,7 @@ flutter:
   assets:
     - assets/images/login.png
     - assets/images/dashboard.png
-    - assets/icon/          # 🆕 Add this line
+    - assets/images/splash.png
 
 # ==================== 🆕 APP ICON CONFIGURATION ====================
 flutter_launcher_icons:

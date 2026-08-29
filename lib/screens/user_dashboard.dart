@@ -6,16 +6,16 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'calculator_screen.dart';
+import 'credit/credit_screen.dart';
+import 'debit/debit_screen.dart';
 import 'expense_calculation_screen.dart';
-import 'expense_report_screen.dart';
 import 'expense_screen.dart';
-import 'income_report_screen.dart';
 import 'income_screen.dart';
 import 'login_screen.dart';
 import 'password_change_screen.dart';
 import 'profile_screen.dart';
-import 'reports_screen.dart';
-import 'settings_screen.dart';
+import 'Report/reports_screen.dart';
+import 'settings/settings_screen.dart';
 
 class UserDashboard extends StatefulWidget {
   const UserDashboard({super.key});
@@ -414,7 +414,7 @@ class _UserDashboardState extends State<UserDashboard> {
                             ).then((_) => _loadFinancialSummary());
                           }),
 
-                          _card(context, 'Reports', Icons.bar_chart, () {
+                          _card(context, 'Reports', Icons.assessment, () {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
@@ -423,15 +423,38 @@ class _UserDashboardState extends State<UserDashboard> {
                               ),
                             );
                           }),
-                           _card(context, 'Expense Calculator', Icons.bar_chart, () {
+                          _card(
+                            context,
+                            'Expense Calculator',
+                            Icons.calculate_outlined,
+                            () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      const ExpenseCalculationScreen(),
+                                ),
+                              ).then((_) => _loadFinancialSummary());
+                            },
+                          ),
+
+                          _card(context, 'Credits', Icons.person_add, () {
                             Navigator.push(
                               context,
                               MaterialPageRoute(
-                                builder: (_) => const ExpenseCalculationScreen(),
+                                builder: (_) => const CreditScreen(),
                               ),
-                            ).then((_) => _loadFinancialSummary());
+                            );
                           }),
-                          _card(context, 'Calculator', Icons.bar_chart, () {
+                          _card(context, 'Debits', Icons.money_off, () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (_) => const DebitScreen(),
+                              ),
+                            );
+                          }),
+                          _card(context, 'Calculator', Icons.calculate, () {
                             Navigator.push(
                               context,
                               MaterialPageRoute(

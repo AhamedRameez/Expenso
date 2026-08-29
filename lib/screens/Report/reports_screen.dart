@@ -50,16 +50,16 @@ class _ReportsScreenState extends State<ReportsScreen>
             color: const Color(0xFFF1F5F9),
             borderRadius: BorderRadius.circular(12),
           ),
-          child: IconButton(
-            icon: const Icon(
-              Icons.arrow_back_ios,
-              size: 18,
-              color: Color(0xFF475569),
-            ),
-            onPressed: () => Navigator.pop(context),
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
-          ),
+          // child: IconButton(
+          //   icon: const Icon(
+          //     Icons.arrow_back_ios,
+          //     size: 18,
+          //     color: Color(0xFF475569),
+          //   ),
+          //   onPressed: () => Navigator.pop(context),
+          //   padding: EdgeInsets.zero,
+          //   constraints: const BoxConstraints(),
+          // ),
         ),
         bottom: PreferredSize(
           preferredSize: const Size.fromHeight(50),

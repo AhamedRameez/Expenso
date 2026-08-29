@@ -1,4 +1,4 @@
-// lib/screens/expense_report_screen.dart
+// lib/screens/income_report_screen.dart
 import 'dart:io';
 import 'dart:ui';
 
@@ -10,20 +10,21 @@ import 'package:pdf/pdf.dart';
 import 'package:pdf/widgets.dart' as pw;
 import 'package:path_provider/path_provider.dart';
 import 'package:open_file/open_file.dart';
+import 'package:universal_html/html.dart' as html;
 
-class ExpenseReportScreen extends StatefulWidget {
-  const ExpenseReportScreen({super.key});
+class IncomeReportScreen extends StatefulWidget {
+  const IncomeReportScreen({super.key});
 
   @override
-  State<ExpenseReportScreen> createState() => _ExpenseReportScreenState();
+  State<IncomeReportScreen> createState() => _IncomeReportScreenState();
 }
 
-class _ExpenseReportScreenState extends State<ExpenseReportScreen> {
+class _IncomeReportScreenState extends State<IncomeReportScreen> {
   // ==================== VARIABLES ====================
-  List<Map<String, dynamic>> _allExpenses = [];
-  List<Map<String, dynamic>> _filteredExpenses = [];
-  Map<String, double> _categoryWiseExpense = {};
-  double _totalExpense = 0.0;
+  List<Map<String, dynamic>> _allIncomes = [];
+  List<Map<String, dynamic>> _filteredIncomes = [];
+  Map<String, double> _categoryWiseIncome = {};
+  double _totalIncome = 0.0;
   bool _isLoading = true;
 
   // Date filter
@@ -33,10 +34,10 @@ class _ExpenseReportScreenState extends State<ExpenseReportScreen> {
 
   // Category filter
   String? _selectedCategoryFilter;
-  List<String> _expenseCategories = [];
+  List<String> _incomeCategories = [];
 
-  // Expand/collapse for Top Spending
-  bool _showAllTopSpending = false;
+  // Expand/collapse for Top Sources
+  bool _showAllTopSources = false;
 
   // Current user
   String? get _currentUserId => FirebaseAuth.instance.currentUser?.uid;
@@ -44,11 +45,11 @@ class _ExpenseReportScreenState extends State<ExpenseReportScreen> {
   @override
   void initState() {
     super.initState();
-    _loadExpenseData();
+    _loadIncomeData();
   }
 
-  // ==================== LOAD EXPENSE DATA ====================
-  Future<void> _loadExpenseData() async {
+  // ==================== LOAD INCOME DATA ====================
+  Future<void> _loadIncomeData() async {
     if (_currentUserId == null) return;
 
     setState(() => _isLoading = true);
@@ -60,7 +61,7 @@ class _ExpenseReportScreenState extends State<ExpenseReportScreen> {
           .collection('ExpensoUsers')
           .doc(_currentUserId)
           .collection('transactions')
-          .where('type', isEqualTo: 'expense')
+          .where('type', isEqualTo: 'income')
           .orderBy('date', descending: true);
 
       // Apply date filter
@@ -97,7 +98,7 @@ class _ExpenseReportScreenState extends State<ExpenseReportScreen> {
 
       final snapshot = await query.get();
 
-      final expenses = snapshot.docs.map((doc) {
+      final incomes = snapshot.docs.map((doc) {
         final data = doc.data() as Map<String, dynamic>;
         DateTime date;
         if (data['date'] is Timestamp) {
@@ -109,8 +110,9 @@ class _ExpenseReportScreenState extends State<ExpenseReportScreen> {
         return {
           'id': doc.id,
           'date': date,
-          'category': data['category'] ?? data['expenseType'] ?? 'Other',
+          'category': data['category'] ?? data['incomeType'] ?? 'Other',
           'amount': (data['amount'] as num?)?.toDouble() ?? 0.0,
+          'source': data['source'] ?? '',
           'description': data['description'] ?? '',
           'paymentMethod': data['paymentMethod'] ?? '',
         };
@@ -118,42 +120,42 @@ class _ExpenseReportScreenState extends State<ExpenseReportScreen> {
 
       // Extract unique categories
       final categories =
-          expenses.map((e) => e['category'] as String).toSet().toList()..sort();
+          incomes.map((i) => i['category'] as String).toSet().toList()..sort();
 
-      // Calculate category-wise expense
+      // Calculate category-wise income
       Map<String, double> categoryWise = {};
-      for (var expense in expenses) {
-        final category = expense['category'] as String;
-        final amount = expense['amount'] as double;
+      for (var income in incomes) {
+        final category = income['category'] as String;
+        final amount = income['amount'] as double;
         categoryWise[category] = (categoryWise[category] ?? 0) + amount;
       }
 
       // Apply category filter
-      List<Map<String, dynamic>> filtered = expenses;
+      List<Map<String, dynamic>> filtered = incomes;
       if (_selectedCategoryFilter != null && _selectedCategoryFilter != 'All') {
-        filtered = expenses
-            .where((e) => e['category'] == _selectedCategoryFilter)
+        filtered = incomes
+            .where((i) => i['category'] == _selectedCategoryFilter)
             .toList();
       }
 
       // Calculate total
       double total = filtered.fold(
         0.0,
-        (sum, e) => sum + (e['amount'] as double),
+        (sum, i) => sum + (i['amount'] as double),
       );
 
       if (mounted) {
         setState(() {
-          _allExpenses = expenses;
-          _filteredExpenses = filtered;
-          _expenseCategories = ['All', ...categories];
-          _categoryWiseExpense = categoryWise;
-          _totalExpense = total;
+          _allIncomes = incomes;
+          _filteredIncomes = filtered;
+          _incomeCategories = ['All', ...categories];
+          _categoryWiseIncome = categoryWise;
+          _totalIncome = total;
           _isLoading = false;
         });
       }
     } catch (e) {
-      print('❌ Error loading expense data: $e');
+      print('❌ Error loading income data: $e');
       if (mounted) {
         setState(() => _isLoading = false);
       }
@@ -177,7 +179,7 @@ class _ExpenseReportScreenState extends State<ExpenseReportScreen> {
         }
         _selectedMonth = null;
       });
-      _loadExpenseData();
+      _loadIncomeData();
     }
   }
 
@@ -194,7 +196,7 @@ class _ExpenseReportScreenState extends State<ExpenseReportScreen> {
         _toDate = picked;
         _selectedMonth = null;
       });
-      _loadExpenseData();
+      _loadIncomeData();
     }
   }
 
@@ -204,7 +206,7 @@ class _ExpenseReportScreenState extends State<ExpenseReportScreen> {
       _fromDate = null;
       _toDate = null;
     });
-    _loadExpenseData();
+    _loadIncomeData();
   }
 
   void _clearDateFilter() {
@@ -213,7 +215,7 @@ class _ExpenseReportScreenState extends State<ExpenseReportScreen> {
       _toDate = null;
       _selectedMonth = null;
     });
-    _loadExpenseData();
+    _loadIncomeData();
   }
 
   // ==================== GET PERIOD TITLE ====================
@@ -241,7 +243,7 @@ class _ExpenseReportScreenState extends State<ExpenseReportScreen> {
         child: const Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            CircularProgressIndicator(color: Color(0xFFE74C3C)),
+            CircularProgressIndicator(color: Color(0xFF27AE60)),
             SizedBox(height: 16),
             Text(
               'Generating PDF...',
@@ -268,20 +270,20 @@ class _ExpenseReportScreenState extends State<ExpenseReportScreen> {
       ).format(DateTime.now());
 
       // Colors
-      final primaryColor = PdfColor.fromInt(0xFFE74C3C);
+      final primaryColor = PdfColor.fromInt(0xFF27AE60);
       final darkColor = PdfColor.fromInt(0xFF1E293B);
       final greyColor = PdfColor.fromInt(0xFF64748B);
       final lightGreyColor = PdfColor.fromInt(0xFFF1F5F9);
       final whiteColor = PdfColor.fromInt(0xFFFFFFFF);
 
       // Build category breakdown widgets list
-      final sortedCategories = _categoryWiseExpense.entries.toList()
+      final sortedCategories = _categoryWiseIncome.entries.toList()
         ..sort((a, b) => b.value.compareTo(a.value));
 
       List<pw.Widget> categoryWidgets = [];
       for (var entry in sortedCategories) {
-        final percentage = _totalExpense > 0
-            ? (entry.value / _totalExpense * 100)
+        final percentage = _totalIncome > 0
+            ? (entry.value / _totalIncome * 100)
             : 0.0;
         categoryWidgets.add(
           pw.Container(
@@ -331,7 +333,7 @@ class _ExpenseReportScreenState extends State<ExpenseReportScreen> {
                 ),
                 pw.SizedBox(height: 2),
                 pw.Text(
-                  '${percentage.toStringAsFixed(1)}% (${_allExpenses.where((e) => e['category'] == entry.key).length} transactions)',
+                  '${percentage.toStringAsFixed(1)}% (${_allIncomes.where((e) => e['category'] == entry.key).length} transactions)',
                   style: pw.TextStyle(fontSize: 9, color: greyColor),
                 ),
               ],
@@ -371,7 +373,7 @@ class _ExpenseReportScreenState extends State<ExpenseReportScreen> {
                       ),
                       pw.SizedBox(height: 4),
                       pw.Text(
-                        'Expense Report',
+                        'Income Report',
                         style: pw.TextStyle(
                           fontSize: 16,
                           color: darkColor,
@@ -404,26 +406,26 @@ class _ExpenseReportScreenState extends State<ExpenseReportScreen> {
             pw.Container(
               padding: const pw.EdgeInsets.all(16),
               decoration: pw.BoxDecoration(
-                color: PdfColor.fromInt(0xFFFEF2F2),
+                color: PdfColor.fromInt(0xFFF0FDF4),
                 borderRadius: pw.BorderRadius.circular(8),
-                border: pw.Border.all(color: PdfColor.fromInt(0xFFFECACA)),
+                border: pw.Border.all(color: PdfColor.fromInt(0xFFBBF7D0)),
               ),
               child: pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceAround,
                 children: [
                   _buildPdfSummaryItem(
-                    'Total Expenses',
-                    currencyFormat.format(_totalExpense),
+                    'Total Income',
+                    currencyFormat.format(_totalIncome),
                     primaryColor,
                   ),
                   _buildPdfSummaryItem(
                     'Transactions',
-                    '${_filteredExpenses.length}',
+                    '${_filteredIncomes.length}',
                     darkColor,
                   ),
                   _buildPdfSummaryItem(
                     'Categories',
-                    '${_categoryWiseExpense.length}',
+                    '${_categoryWiseIncome.length}',
                     darkColor,
                   ),
                 ],
@@ -479,18 +481,16 @@ class _ExpenseReportScreenState extends State<ExpenseReportScreen> {
                 vertical: 8,
               ),
               oddRowDecoration: pw.BoxDecoration(color: lightGreyColor),
-              headers: ['#', 'Date', 'Category', 'Payment', 'Amount'],
-              data: _filteredExpenses.asMap().entries.map((entry) {
+              headers: ['#', 'Date', 'Category', 'Source', 'Amount'],
+              data: _filteredIncomes.asMap().entries.map((entry) {
                 final i = entry.key + 1;
-                final exp = entry.value;
+                final inc = entry.value;
                 return [
                   '$i',
-                  dateFormat.format(exp['date'] as DateTime),
-                  exp['category'] ?? '-',
-                  exp['paymentMethod']?.isNotEmpty == true
-                      ? exp['paymentMethod']
-                      : '-',
-                  currencyFormat.format(exp['amount'] ?? 0),
+                  dateFormat.format(inc['date'] as DateTime),
+                  inc['category'] ?? '-',
+                  inc['source']?.isNotEmpty == true ? inc['source'] : '-',
+                  currencyFormat.format(inc['amount'] ?? 0),
                 ];
               }).toList(),
             ),
@@ -501,14 +501,14 @@ class _ExpenseReportScreenState extends State<ExpenseReportScreen> {
             pw.Container(
               padding: const pw.EdgeInsets.all(12),
               decoration: pw.BoxDecoration(
-                color: PdfColor.fromInt(0xFFFEF2F2),
+                color: PdfColor.fromInt(0xFFF0FDF4),
                 borderRadius: pw.BorderRadius.circular(4),
               ),
               child: pw.Row(
                 mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
                 children: [
                   pw.Text(
-                    'TOTAL EXPENSES',
+                    'TOTAL INCOME',
                     style: pw.TextStyle(
                       fontSize: 14,
                       fontWeight: pw.FontWeight.bold,
@@ -516,7 +516,7 @@ class _ExpenseReportScreenState extends State<ExpenseReportScreen> {
                     ),
                   ),
                   pw.Text(
-                    currencyFormat.format(_totalExpense),
+                    currencyFormat.format(_totalIncome),
                     style: pw.TextStyle(
                       fontSize: 16,
                       fontWeight: pw.FontWeight.bold,
@@ -555,48 +555,95 @@ class _ExpenseReportScreenState extends State<ExpenseReportScreen> {
         ),
       );
 
-      // Save PDF to temporary directory
-      final output = await getTemporaryDirectory();
+      // ==================== SAVE & DOWNLOAD (CROSS-PLATFORM) ====================
+      final pdfBytes = await pdf.save();
       final fileName =
-          'Expense_Report_${DateFormat('yyyyMMdd_HHmmss').format(DateTime.now())}.pdf';
-      final file = File('${output.path}/$fileName');
-      await file.writeAsBytes(await pdf.save());
+          'Income_Report_${DateFormat('yyyyMMdd_HHmmss').format(DateTime.now())}.pdf';
 
       if (mounted) {
         Navigator.pop(context); // Close loading dialog
+      }
 
-        // Show success and open file
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.check_circle, color: Colors.white, size: 18),
-                const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    'PDF saved: $fileName',
-                    style: const TextStyle(fontSize: 12),
+      // Try Web download first, fall back to Mobile save
+      try {
+        // Web: Download via browser
+        final blob = html.Blob([pdfBytes], 'application/pdf');
+        final url = html.Url.createObjectUrlFromBlob(blob);
+        final anchor = html.AnchorElement(href: url)
+          ..setAttribute('download', fileName)
+          ..click();
+        html.Url.revokeObjectUrl(url);
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.check_circle, color: Colors.white, size: 18),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Download started: $fileName',
+                      style: const TextStyle(fontSize: 12),
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
+              backgroundColor: Colors.green,
+              behavior: SnackBarBehavior.floating,
+              duration: const Duration(seconds: 3),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+              margin: const EdgeInsets.all(16),
             ),
-            backgroundColor: Colors.green,
-            behavior: SnackBarBehavior.floating,
-            duration: const Duration(seconds: 3),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-            ),
-            margin: const EdgeInsets.all(16),
-            action: SnackBarAction(
-              label: 'Open',
-              textColor: Colors.white,
-              onPressed: () => OpenFile.open(file.path),
-            ),
-          ),
-        );
+          );
+        }
+      } catch (e) {
+        // Mobile: Save to temp and open
+        try {
+          final output = await getTemporaryDirectory();
+          final file = File('${output.path}/$fileName');
+          await file.writeAsBytes(pdfBytes);
 
-        // Auto-open the PDF
-        await OpenFile.open(file.path);
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Row(
+                  children: [
+                    const Icon(
+                      Icons.check_circle,
+                      color: Colors.white,
+                      size: 18,
+                    ),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'PDF saved: $fileName',
+                        style: const TextStyle(fontSize: 12),
+                      ),
+                    ),
+                  ],
+                ),
+                backgroundColor: Colors.green,
+                behavior: SnackBarBehavior.floating,
+                duration: const Duration(seconds: 3),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                margin: const EdgeInsets.all(16),
+                action: SnackBarAction(
+                  label: 'Open',
+                  textColor: Colors.white,
+                  onPressed: () => OpenFile.open(file.path),
+                ),
+              ),
+            );
+            await OpenFile.open(file.path);
+          }
+        } catch (mobileError) {
+          print('❌ Mobile save error: $mobileError');
+        }
       }
     } catch (e) {
       print('❌ PDF Error: $e');
@@ -652,7 +699,7 @@ class _ExpenseReportScreenState extends State<ExpenseReportScreen> {
       backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
         title: const Text(
-          'Expense Report',
+          'Income Report',
           style: TextStyle(
             fontWeight: FontWeight.w600,
             fontSize: 18,
@@ -662,23 +709,23 @@ class _ExpenseReportScreenState extends State<ExpenseReportScreen> {
         backgroundColor: Colors.white,
         elevation: 0,
         centerTitle: false,
-        leading: Container(
-          margin: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: const Color(0xFFF1F5F9),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: IconButton(
-            icon: const Icon(
-              Icons.arrow_back_ios,
-              size: 18,
-              color: Color(0xFF475569),
-            ),
-            onPressed: () => Navigator.pop(context),
-            padding: EdgeInsets.zero,
-            constraints: const BoxConstraints(),
-          ),
-        ),
+        // leading: Container(
+        //   margin: const EdgeInsets.all(8),
+        //   decoration: BoxDecoration(
+        //     color: const Color(0xFFF1F5F9),
+        //     borderRadius: BorderRadius.circular(12),
+        //   ),
+        //   child: IconButton(
+        //     icon: const Icon(
+        //       Icons.arrow_back_ios,
+        //       size: 18,
+        //       color: Color(0xFF475569),
+        //     ),
+        //     onPressed: () => Navigator.pop(context),
+        //     padding: EdgeInsets.zero,
+        //     constraints: const BoxConstraints(),
+        //   ),
+        // ),
         actions: [
           // PDF Export Button
           Container(
@@ -703,16 +750,16 @@ class _ExpenseReportScreenState extends State<ExpenseReportScreen> {
           Container(
             margin: const EdgeInsets.all(8),
             decoration: BoxDecoration(
-              color: const Color(0xFFE74C3C).withOpacity(0.1),
+              color: const Color(0xFF27AE60).withOpacity(0.1),
               borderRadius: BorderRadius.circular(12),
             ),
             child: IconButton(
               icon: const Icon(
                 Icons.refresh_rounded,
                 size: 20,
-                color: Color(0xFFE74C3C),
+                color: Color(0xFF27AE60),
               ),
-              onPressed: _loadExpenseData,
+              onPressed: _loadIncomeData,
               padding: EdgeInsets.zero,
               constraints: const BoxConstraints(),
               tooltip: 'Refresh',
@@ -727,7 +774,7 @@ class _ExpenseReportScreenState extends State<ExpenseReportScreen> {
               padding: const EdgeInsets.all(16),
               child: Column(
                 children: [
-                  // Expense Summary Card
+                  // Income Summary Card
                   _buildSummaryCard(currencyFormat),
                   const SizedBox(height: 16),
 
@@ -739,12 +786,12 @@ class _ExpenseReportScreenState extends State<ExpenseReportScreen> {
                   _buildCategoryDropdownFilter(currencyFormat),
                   const SizedBox(height: 16),
 
-                  // Top Spending Categories (collapsible)
-                  _buildTopSpendingCategories(currencyFormat),
+                  // Top Categories (with click arrow)
+                  _buildTopCategories(currencyFormat),
                   const SizedBox(height: 16),
 
-                  // Expense List
-                  _buildExpenseTable(currencyFormat),
+                  // Income List
+                  _buildIncomeTable(currencyFormat),
                   const SizedBox(height: 20),
                 ],
               ),
@@ -758,14 +805,14 @@ class _ExpenseReportScreenState extends State<ExpenseReportScreen> {
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
-          colors: [Color(0xFFE74C3C), Color(0xFFC0392B)],
+          colors: [Color(0xFF27AE60), Color(0xFF2ECC71)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFFE74C3C).withOpacity(0.3),
+            color: const Color(0xFF27AE60).withOpacity(0.3),
             blurRadius: 20,
             offset: const Offset(0, 10),
           ),
@@ -782,7 +829,7 @@ class _ExpenseReportScreenState extends State<ExpenseReportScreen> {
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: const Icon(
-                  Icons.trending_down_rounded,
+                  Icons.trending_up_rounded,
                   color: Colors.white,
                   size: 24,
                 ),
@@ -793,7 +840,7 @@ class _ExpenseReportScreenState extends State<ExpenseReportScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const Text(
-                      'Total Expenses',
+                      'Total Income',
                       style: TextStyle(
                         fontSize: 14,
                         color: Colors.white70,
@@ -802,7 +849,7 @@ class _ExpenseReportScreenState extends State<ExpenseReportScreen> {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      currencyFormat.format(_totalExpense),
+                      currencyFormat.format(_totalIncome),
                       style: const TextStyle(
                         fontSize: 28,
                         fontWeight: FontWeight.bold,
@@ -819,14 +866,14 @@ class _ExpenseReportScreenState extends State<ExpenseReportScreen> {
             children: [
               _buildSummaryStat(
                 label: 'Transactions',
-                value: '${_filteredExpenses.length}',
+                value: '${_filteredIncomes.length}',
               ),
               const SizedBox(width: 16),
               _buildSummaryStat(label: 'Period', value: _getPeriodTitle()),
               const SizedBox(width: 16),
               _buildSummaryStat(
                 label: 'Categories',
-                value: '${_categoryWiseExpense.length}',
+                value: '${_categoryWiseIncome.length}',
               ),
             ],
           ),
@@ -889,7 +936,7 @@ class _ExpenseReportScreenState extends State<ExpenseReportScreen> {
                   const Icon(
                     Icons.date_range,
                     size: 16,
-                    color: Color(0xFFE74C3C),
+                    color: Color(0xFF27AE60),
                   ),
                   const SizedBox(width: 8),
                   const Text(
@@ -933,7 +980,7 @@ class _ExpenseReportScreenState extends State<ExpenseReportScreen> {
                           borderRadius: BorderRadius.circular(10),
                           border: Border.all(
                             color: _fromDate != null
-                                ? const Color(0xFFE74C3C).withOpacity(0.5)
+                                ? const Color(0xFF27AE60).withOpacity(0.5)
                                 : Colors.grey.withOpacity(0.3),
                           ),
                         ),
@@ -972,7 +1019,7 @@ class _ExpenseReportScreenState extends State<ExpenseReportScreen> {
                           borderRadius: BorderRadius.circular(10),
                           border: Border.all(
                             color: _toDate != null
-                                ? const Color(0xFFE74C3C).withOpacity(0.5)
+                                ? const Color(0xFF27AE60).withOpacity(0.5)
                                 : Colors.grey.withOpacity(0.3),
                           ),
                         ),
@@ -1006,19 +1053,19 @@ class _ExpenseReportScreenState extends State<ExpenseReportScreen> {
         padding: const EdgeInsets.all(8),
         decoration: BoxDecoration(
           color: _selectedMonth != null
-              ? const Color(0xFFE74C3C).withOpacity(0.1)
+              ? const Color(0xFF27AE60).withOpacity(0.1)
               : const Color(0xFFF8FAFC),
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
             color: _selectedMonth != null
-                ? const Color(0xFFE74C3C).withOpacity(0.3)
+                ? const Color(0xFF27AE60).withOpacity(0.3)
                 : Colors.grey.withOpacity(0.3),
           ),
         ),
         child: Icon(
           Icons.calendar_month_rounded,
           size: 18,
-          color: _selectedMonth != null ? const Color(0xFFE74C3C) : Colors.grey,
+          color: _selectedMonth != null ? const Color(0xFF27AE60) : Colors.grey,
         ),
       ),
     );
@@ -1077,7 +1124,7 @@ class _ExpenseReportScreenState extends State<ExpenseReportScreen> {
                 Icon(
                   Icons.calendar_month_outlined,
                   size: 16,
-                  color: isSelected ? const Color(0xFFE74C3C) : Colors.grey,
+                  color: isSelected ? const Color(0xFF27AE60) : Colors.grey,
                 ),
                 const SizedBox(width: 8),
                 Text(
@@ -1088,13 +1135,13 @@ class _ExpenseReportScreenState extends State<ExpenseReportScreen> {
                         ? FontWeight.w600
                         : FontWeight.normal,
                     color: isSelected
-                        ? const Color(0xFFE74C3C)
+                        ? const Color(0xFF27AE60)
                         : Colors.black87,
                   ),
                 ),
                 if (isSelected) ...[
                   const Spacer(),
-                  const Icon(Icons.check, size: 16, color: Color(0xFFE74C3C)),
+                  const Icon(Icons.check, size: 16, color: Color(0xFF27AE60)),
                 ],
               ],
             ),
@@ -1115,7 +1162,7 @@ class _ExpenseReportScreenState extends State<ExpenseReportScreen> {
 
   // ==================== CATEGORY DROPDOWN FILTER ====================
   Widget _buildCategoryDropdownFilter(NumberFormat currencyFormat) {
-    if (_expenseCategories.length <= 1) return const SizedBox();
+    if (_incomeCategories.length <= 1) return const SizedBox();
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(16),
@@ -1136,7 +1183,7 @@ class _ExpenseReportScreenState extends State<ExpenseReportScreen> {
                   const Icon(
                     Icons.category_outlined,
                     size: 16,
-                    color: Color(0xFFE74C3C),
+                    color: Color(0xFF27AE60),
                   ),
                   const SizedBox(width: 8),
                   const Text(
@@ -1156,14 +1203,14 @@ class _ExpenseReportScreenState extends State<ExpenseReportScreen> {
                         vertical: 2,
                       ),
                       decoration: BoxDecoration(
-                        color: const Color(0xFFE74C3C).withOpacity(0.1),
+                        color: const Color(0xFF27AE60).withOpacity(0.1),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Text(
-                        '${_filteredExpenses.length} results',
+                        '${_filteredIncomes.length} results',
                         style: const TextStyle(
                           fontSize: 10,
-                          color: Color(0xFFE74C3C),
+                          color: Color(0xFF27AE60),
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -1188,22 +1235,22 @@ class _ExpenseReportScreenState extends State<ExpenseReportScreen> {
                       color: Color(0xFF1E293B),
                       fontWeight: FontWeight.w500,
                     ),
-                    items: _expenseCategories.map((category) {
+                    items: _incomeCategories.map((category) {
                       final count = category == 'All'
-                          ? _allExpenses.length
-                          : _allExpenses
-                                .where((e) => e['category'] == category)
+                          ? _allIncomes.length
+                          : _allIncomes
+                                .where((i) => i['category'] == category)
                                 .length;
                       final amount = category == 'All'
-                          ? _allExpenses.fold(
+                          ? _allIncomes.fold(
                               0.0,
-                              (sum, e) => sum + (e['amount'] as double),
+                              (sum, i) => sum + (i['amount'] as double),
                             )
-                          : _allExpenses
-                                .where((e) => e['category'] == category)
+                          : _allIncomes
+                                .where((i) => i['category'] == category)
                                 .fold(
                                   0.0,
-                                  (sum, e) => sum + (e['amount'] as double),
+                                  (sum, i) => sum + (i['amount'] as double),
                                 );
 
                       return DropdownMenuItem<String>(
@@ -1216,7 +1263,7 @@ class _ExpenseReportScreenState extends State<ExpenseReportScreen> {
                               decoration: BoxDecoration(
                                 color: category == 'All'
                                     ? const Color(0xFF6366F1)
-                                    : const Color(0xFFE74C3C),
+                                    : const Color(0xFF27AE60),
                                 borderRadius: BorderRadius.circular(2),
                               ),
                             ),
@@ -1249,9 +1296,9 @@ class _ExpenseReportScreenState extends State<ExpenseReportScreen> {
                     onChanged: (value) {
                       setState(() {
                         _selectedCategoryFilter = value == 'All' ? null : value;
-                        _showAllTopSpending = false;
+                        _showAllTopSources = false;
                       });
-                      _loadExpenseData();
+                      _loadIncomeData();
                     },
                   ),
                 ),
@@ -1263,15 +1310,15 @@ class _ExpenseReportScreenState extends State<ExpenseReportScreen> {
     );
   }
 
-  // ==================== TOP SPENDING CATEGORIES (COLLAPSIBLE) ====================
-  Widget _buildTopSpendingCategories(NumberFormat currencyFormat) {
+  // ==================== TOP CATEGORIES (COLLAPSIBLE - CLICK TO EXPAND) ====================
+  Widget _buildTopCategories(NumberFormat currencyFormat) {
     List<MapEntry<String, double>> sorted;
     if (_selectedCategoryFilter != null && _selectedCategoryFilter != 'All') {
-      sorted = _categoryWiseExpense.entries
+      sorted = _categoryWiseIncome.entries
           .where((e) => e.key == _selectedCategoryFilter)
           .toList();
     } else {
-      sorted = _categoryWiseExpense.entries.toList()
+      sorted = _categoryWiseIncome.entries.toList()
         ..sort((a, b) => b.value.compareTo(a.value));
     }
 
@@ -1280,7 +1327,7 @@ class _ExpenseReportScreenState extends State<ExpenseReportScreen> {
     final totalForCalculation =
         _selectedCategoryFilter != null && _selectedCategoryFilter != 'All'
         ? sorted.first.value
-        : _allExpenses.fold(0.0, (sum, e) => sum + (e['amount'] as double));
+        : _allIncomes.fold(0.0, (sum, i) => sum + (i['amount'] as double));
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(16),
@@ -1294,11 +1341,11 @@ class _ExpenseReportScreenState extends State<ExpenseReportScreen> {
           ),
           child: Column(
             children: [
-              // Header - Click to toggle
+              // Header - Always visible, click to toggle
               GestureDetector(
                 onTap: () {
                   setState(() {
-                    _showAllTopSpending = !_showAllTopSpending;
+                    _showAllTopSources = !_showAllTopSources;
                   });
                 },
                 child: Padding(
@@ -1309,14 +1356,14 @@ class _ExpenseReportScreenState extends State<ExpenseReportScreen> {
                         width: 3,
                         height: 18,
                         decoration: BoxDecoration(
-                          color: const Color(0xFFE74C3C),
+                          color: const Color(0xFFF39C12),
                           borderRadius: BorderRadius.circular(2),
                         ),
                       ),
                       const SizedBox(width: 8),
                       const Expanded(
                         child: Text(
-                          'Top Spending Categories',
+                          'Top Income Sources',
                           style: TextStyle(
                             fontSize: 15,
                             fontWeight: FontWeight.w700,
@@ -1327,16 +1374,16 @@ class _ExpenseReportScreenState extends State<ExpenseReportScreen> {
                       Container(
                         padding: const EdgeInsets.all(6),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFE74C3C).withOpacity(0.1),
+                          color: const Color(0xFFF39C12).withOpacity(0.1),
                           borderRadius: BorderRadius.circular(8),
                         ),
                         child: AnimatedRotation(
-                          turns: _showAllTopSpending ? 0.5 : 0,
+                          turns: _showAllTopSources ? 0.5 : 0,
                           duration: const Duration(milliseconds: 300),
                           child: const Icon(
                             Icons.keyboard_arrow_down_rounded,
                             size: 22,
-                            color: Color(0xFFE74C3C),
+                            color: Color(0xFFF39C12),
                           ),
                         ),
                       ),
@@ -1355,8 +1402,8 @@ class _ExpenseReportScreenState extends State<ExpenseReportScreen> {
                       final percentage = totalForCalculation > 0
                           ? (entry.value / totalForCalculation * 100)
                           : 0.0;
-                      final transactionCount = _allExpenses
-                          .where((e) => e['category'] == entry.key)
+                      final transactionCount = _allIncomes
+                          .where((i) => i['category'] == entry.key)
                           .length;
 
                       return Padding(
@@ -1385,7 +1432,7 @@ class _ExpenseReportScreenState extends State<ExpenseReportScreen> {
                                   style: const TextStyle(
                                     fontSize: 13,
                                     fontWeight: FontWeight.bold,
-                                    color: Color(0xFFE74C3C),
+                                    color: Color(0xFF27AE60),
                                   ),
                                 ),
                               ],
@@ -1396,7 +1443,7 @@ class _ExpenseReportScreenState extends State<ExpenseReportScreen> {
                               child: LinearProgressIndicator(
                                 value: percentage / 100,
                                 backgroundColor: Colors.grey.shade200,
-                                color: const Color(0xFFE74C3C),
+                                color: const Color(0xFF27AE60),
                                 minHeight: 6,
                               ),
                             ),
@@ -1405,7 +1452,7 @@ class _ExpenseReportScreenState extends State<ExpenseReportScreen> {
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
                                 Text(
-                                  '${percentage.toStringAsFixed(1)}% of expenses',
+                                  '${percentage.toStringAsFixed(1)}% of income',
                                   style: TextStyle(
                                     fontSize: 10,
                                     color: Colors.grey.shade500,
@@ -1426,7 +1473,7 @@ class _ExpenseReportScreenState extends State<ExpenseReportScreen> {
                     }).toList(),
                   ),
                 ),
-                crossFadeState: _showAllTopSpending
+                crossFadeState: _showAllTopSources
                     ? CrossFadeState.showSecond
                     : CrossFadeState.showFirst,
                 duration: const Duration(milliseconds: 350),
@@ -1438,8 +1485,8 @@ class _ExpenseReportScreenState extends State<ExpenseReportScreen> {
     );
   }
 
-  // ==================== EXPENSE TABLE ====================
-  Widget _buildExpenseTable(NumberFormat currencyFormat) {
+  // ==================== INCOME TABLE ====================
+  Widget _buildIncomeTable(NumberFormat currencyFormat) {
     final dateFormat = DateFormat('dd-MM-yy');
 
     return ClipRRect(
@@ -1461,7 +1508,7 @@ class _ExpenseReportScreenState extends State<ExpenseReportScreen> {
                   vertical: 12,
                 ),
                 decoration: const BoxDecoration(
-                  color: Color(0xFFE74C3C),
+                  color: Color(0xFF27AE60),
                   borderRadius: BorderRadius.only(
                     topLeft: Radius.circular(16),
                     topRight: Radius.circular(16),
@@ -1505,7 +1552,7 @@ class _ExpenseReportScreenState extends State<ExpenseReportScreen> {
                     const Expanded(
                       flex: 2,
                       child: Text(
-                        'Payment',
+                        'Source',
                         style: TextStyle(
                           color: Colors.white,
                           fontWeight: FontWeight.bold,
@@ -1530,7 +1577,7 @@ class _ExpenseReportScreenState extends State<ExpenseReportScreen> {
               ),
 
               // Table Body
-              if (_filteredExpenses.isEmpty)
+              if (_filteredIncomes.isEmpty)
                 Container(
                   padding: const EdgeInsets.all(40),
                   child: Column(
@@ -1542,18 +1589,18 @@ class _ExpenseReportScreenState extends State<ExpenseReportScreen> {
                       ),
                       const SizedBox(height: 8),
                       Text(
-                        'No expense records found',
+                        'No income records found',
                         style: TextStyle(color: Colors.grey.shade500),
                       ),
                     ],
                   ),
                 )
               else
-                ..._filteredExpenses.take(15).toList().asMap().entries.map((
+                ..._filteredIncomes.take(15).toList().asMap().entries.map((
                   entry,
                 ) {
                   final index = entry.key;
-                  final expense = entry.value;
+                  final income = entry.value;
                   return Container(
                     padding: const EdgeInsets.symmetric(
                       horizontal: 12,
@@ -1579,14 +1626,14 @@ class _ExpenseReportScreenState extends State<ExpenseReportScreen> {
                         Expanded(
                           flex: 2,
                           child: Text(
-                            dateFormat.format(expense['date'] as DateTime),
+                            dateFormat.format(income['date'] as DateTime),
                             style: const TextStyle(fontSize: 11),
                           ),
                         ),
                         Expanded(
                           flex: 3,
                           child: Text(
-                            expense['category'] ?? '-',
+                            income['category'] ?? '-',
                             style: const TextStyle(fontSize: 11),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -1595,13 +1642,12 @@ class _ExpenseReportScreenState extends State<ExpenseReportScreen> {
                         Expanded(
                           flex: 2,
                           child: Text(
-                            expense['paymentMethod']?.isNotEmpty == true
-                                ? expense['paymentMethod']
+                            income['source']?.isNotEmpty == true
+                                ? income['source']
                                 : '-',
                             style: TextStyle(
                               fontSize: 11,
-                              color:
-                                  expense['paymentMethod']?.isNotEmpty == true
+                              color: income['source']?.isNotEmpty == true
                                   ? Colors.black87
                                   : Colors.grey,
                             ),
@@ -1612,11 +1658,11 @@ class _ExpenseReportScreenState extends State<ExpenseReportScreen> {
                         Expanded(
                           flex: 2,
                           child: Text(
-                            '- ${currencyFormat.format(expense['amount'])}',
+                            '+ ${currencyFormat.format(income['amount'])}',
                             style: const TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
-                              color: Color(0xFFE74C3C),
+                              color: Color(0xFF27AE60),
                             ),
                             textAlign: TextAlign.right,
                           ),
@@ -1650,22 +1696,22 @@ class _ExpenseReportScreenState extends State<ExpenseReportScreen> {
                       ),
                     ),
                     Text(
-                      currencyFormat.format(_totalExpense),
+                      currencyFormat.format(_totalIncome),
                       style: const TextStyle(
                         fontWeight: FontWeight.bold,
                         fontSize: 12,
-                        color: Color(0xFFE74C3C),
+                        color: Color(0xFF27AE60),
                       ),
                     ),
                     const Spacer(),
                     Text(
-                      '${_filteredExpenses.length} transactions',
+                      '${_filteredIncomes.length} transactions',
                       style: TextStyle(
                         fontSize: 10,
                         color: Colors.grey.shade600,
                       ),
                     ),
-                    if (_filteredExpenses.length > 15)
+                    if (_filteredIncomes.length > 15)
                       Text(
                         ' (Showing 15)',
                         style: TextStyle(

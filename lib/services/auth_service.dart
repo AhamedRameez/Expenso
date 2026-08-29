@@ -17,6 +17,9 @@ class UserAuthService extends ChangeNotifier {
 
   User? get currentUser => _user;
 
+  // 👇 NEW: Check if user is logged in
+  bool get isLoggedIn => _user != null;
+
   // Sign in with email and password
   Future<User?> signIn(String email, String password) async {
     try {
@@ -42,6 +45,34 @@ class UserAuthService extends ChangeNotifier {
           break;
         default:
           message = 'Login failed. Please try again.';
+      }
+      throw Exception(message);
+    }
+  }
+
+  // 👇 NEW: Register with email and password (for self-registration)
+  Future<User?> register(String email, String password) async {
+    try {
+      UserCredential userCredential = await _auth
+          .createUserWithEmailAndPassword(email: email, password: password);
+      return userCredential.user;
+    } on FirebaseAuthException catch (e) {
+      String message;
+      switch (e.code) {
+        case 'email-already-in-use':
+          message = 'This email is already registered.';
+          break;
+        case 'invalid-email':
+          message = 'Invalid email address.';
+          break;
+        case 'weak-password':
+          message = 'Password must be at least 6 characters.';
+          break;
+        case 'operation-not-allowed':
+          message = 'Email/Password registration is currently disabled.';
+          break;
+        default:
+          message = 'Registration failed. Please try again.';
       }
       throw Exception(message);
     }
